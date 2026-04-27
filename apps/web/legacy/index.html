@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RUPTL Project Management Dashboard — PLN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root {
+      height: 100%; width: 100%;
+      background: #0B1220;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      color: #F9FAFB;
+      overflow: hidden;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+  </style>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* Override Leaflet defaults for dark theme */
+    .leaflet-container { background: #0B1526 !important; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .leaflet-control-attribution { background: rgba(11,18,32,0.7) !important; color: #374151 !important; font-size: 9px !important; }
+    .leaflet-control-attribution a { color: #4B5563 !important; }
+    .leaflet-bar a { background: #111827 !important; color: #9CA3AF !important; border-color: #374151 !important; }
+    .leaflet-bar a:hover { background: #1F2937 !important; color: #F9FAFB !important; }
+    .pln-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+    .pln-tooltip .leaflet-tooltip-tip { display: none !important; }
+    .leaflet-tooltip.pln-tooltip { background: transparent; border: none; box-shadow: none; }
+  </style>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Mock data (plain JS, no JSX) -->
+  <script src="mockData.js?v=4"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+
+  <script>window.PLN_LOGO_B64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CgoKPHN2ZyB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIiB2ZXJzaW9uPSIxLjAiIGlkPSJMYXllcl8xIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjEwMDIuMDAwMSIgaGVpZ2h0PSIzNTguNzgwNDkiIHZpZXdCb3g9IjAgMCAxMDAyLjAwMDEgMzU4Ljc4MDQ5IiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA4OCAzMiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiIGlua3NjYXBlOnZlcnNpb249IjAuOTEgcjEzNzI1IiB4bWxuczpzb2RpcG9kaS0wLmR0ZD0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiIHhtbG5zOnNvZGlwb2RpLTAuZHRkPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCIgc29kaXBvZGktMC5kdGQ6ZG9jbmFtZT0icGxuLnN2ZyI+PG1ldGFkYXRhIGlkPSJtZXRhZGF0YTYxODg3Ij48UkRGPjxXb3JrIHhtbG5zOl89Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiIHhtbG5zOl89Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiIF86YWJvdXQ9IiI+PGZvcm1hdD5pbWFnZS9zdmcreG1sPC9mb3JtYXQ+PHR5cGUgXzpyZXNvdXJjZT0iaHR0cDovL3B1cmwub3JnL2RjL2RjbWl0eXBlL1N0aWxsSW1hZ2UiPjwvdHlwZT48dGl0bGU+PC90aXRsZT48L1dvcms+PC9SREY+PC9tZXRhZGF0YT48ZGVmcyBpZD0iZGVmczYxODg1Ij48L2RlZnM+PG5hbWVkdmlldyBwYWdlY29sb3I9IiNmZmZmZmYiIGJvcmRlcmNvbG9yPSIjNjY2NjY2IiBib3JkZXJvcGFjaXR5PSIxIiBvYmplY3R0b2xlcmFuY2U9IjEwIiBncmlkdG9sZXJhbmNlPSIxMCIgZ3VpZGV0b2xlcmFuY2U9IjEwIiBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMCIgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiIgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIxMzY2IiBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSI3MDUiIGlkPSJuYW1lZHZpZXc2MTg4MyIgc2hvd2dyaWQ9ImZhbHNlIiBmaXQtbWFyZ2luLWxlZnQ9IjEiIGZpdC1tYXJnaW4tdG9wPSIxIiBmaXQtbWFyZ2luLXJpZ2h0PSIxIiBmaXQtbWFyZ2luLWJvdHRvbT0iMSIgaW5rc2NhcGU6em9vbT0iMy45NTQ1NDU1IiBpbmtzY2FwZTpjeD0iNDQuODU4IiBpbmtzY2FwZTpjeT0iMTYuNjQ4MDEyIiBpbmtzY2FwZTp3aW5kb3cteD0iLTgiIGlua3NjYXBlOndpbmRvdy15PSItOCIgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSIgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0iTGF5ZXJfMSI+PC9uYW1lZHZpZXc+PGcgaWQ9Imc2MTg2OSIgdHJhbnNmb3JtPSJtYXRyaXgoMTEuNDAwNTU5LDAsMCwxMS40MDA1NTksLTAuNjE4ODc5NDMsLTMuMDI0Mzk3MikiPjxwYXRoIGQ9Im0gMzcuNjQ3LDIzLjgyMyAzLjc4NiwwIDAsLTQuNzg2IDMuNzI0LDAgYyAzLjAwNywwIDUuMDQsLTIuMjUyIDUuMDQsLTUuMzcgMCwtMy4xMTkgLTIuMDMzLC01LjMyOCAtNS4wNCwtNS4zMjggbCAtNy41MSwwIDAsMTUuNDg0IDAsMCB6IG0gMzYuMDYxLDAgMy43ODUsMCAtMC4wMTksLTkuMDYxIDYuMjQ1LDkuMDYxIDQuMTM4LDAgMCwtMTUuNDg0IC0zLjc4NSwwIDAuMDA4LDkuNDQxIC02LjU0NCwtOS40NDEgLTMuODI4LDAgMCwxNS40ODQgMCwwIHogbSAtMTcuNTk2LDAgMTEuMTg3LDAgMCwtMy4yNDggLTcuNCwwIDAsLTEyLjIzNiAtMy43ODYsMCAwLDE1LjQ4NCAtMTBlLTQsMCB6IG0gLTE0LjY3OCwtOC4wMzQgMCwtNC4yMDIgMy4wMSwwIGMgMS4yNTQsMCAxLjkwNCwwLjg0NSAxLjkwNCwyLjA4IDAsMS4yMzQgLTAuNjUsMi4xMjIgLTEuOTY5LDIuMTIyIGwgLTIuOTQ1LDAgeiIgaWQ9InBhdGg2MTg3MSIgaW5rc2NhcGU6Y29ubmVjdG9yLWN1cnZhdHVyZT0iMCIgc3R5bGU9ImZpbGw6IzI4YThlMCI+PC9wYXRoPjxyZWN0IHg9IjAuMTQyIiB5PSIwLjM1Mjk5OTk5IiB3aWR0aD0iMzEuMjk1IiBoZWlnaHQ9IjMxLjI5NSIgaWQ9InJlY3Q2MTg3MyIgc3R5bGU9ImZpbGw6I2Y3ZTgyZSI+PC9yZWN0PjxwYXRoIGQ9Im0gNi40NTEsMTEuNjk0IGMgMC44MzksLTAuNDYzIDIuMDE0LC0wLjgyOCAyLjk1NSwtMC44MjggMS43OTcsMCAyLjIxMywwLjgyOCAzLjA5NiwwLjgyOCAwLjg4MywwIDEuNzksLTAuODI4IDMuNDIzLC0wLjgyOCAxLjQ4NiwwIDIuMjcxLDAuODI4IDMuNTkxLDAuODI4IDEuMzIzLDAgMS4wNDgsLTAuODI4IDIuOTEsLTAuODI4IDEuODUzLDAgMi43MDEsMC44MjggMi43MDEsMC44MjggbCAwLDIuMTExIGMgMCwwIC0wLjk4OSwtMC44ODEgLTIuNTQ0LC0wLjkwMiAtMS41NDMsLTAuMDE4IC0xLjUwMiwwLjkwMiAtMy4wNjMsMC45MDIgLTEuNTYyLDAgLTEuNjg3LC0wLjkwMiAtMy41MjEsLTAuOTAyIC0xLjgzMywwIC0yLjExLDAuOTAyIC0zLjUyNiwwLjkwMiAtMS40MiwwIC0xLjY4NiwtMC45MzkgLTMuMTY1LC0wLjkyIC0xLjQ3OSwwLjAxOCAtMi44NTcsMC45MiAtMi44NTcsMC45MiBsIDAsLTIuMTExIHoiIGlkPSJwYXRoNjE4NzUiIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiIHN0eWxlPSJjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMyOGE4ZTA7ZmlsbC1ydWxlOmV2ZW5vZGQiPjwvcGF0aD48cGF0aCBkPSJNIDYuNDUxLDE2LjYxNyBDIDcuMjksMTYuMTUzIDguNDY1LDE1Ljc5IDkuNDA2LDE1Ljc5IGMgMS43OTcsMCAyLjIxMywwLjgyNyAzLjA5NiwwLjgyNyAwLjg4MywwIDEuNzksLTAuODI3IDMuNDIzLC0wLjgyNyAxLjQ4NiwwIDIuMjcxLDAuODI3IDMuNTkxLDAuODI3IDEuMzIzLDAgMS4wNDgsLTAuODI3IDIuOTEsLTAuODI3IDEuODUzLDAgMi43MDEsMC44MjcgMi43MDEsMC44MjcgbCAwLDIuMTEyIGMgMCwwIC0wLjk4OSwtMC44ODcgLTIuNTQ0LC0wLjkwMyAtMS41NDMsLTAuMDE1IC0xLjUwMiwwLjkwMyAtMy4wNjMsMC45MDMgLTEuNTYyLDAgLTEuNjg3LC0wLjkwMyAtMy41MjEsLTAuOTAzIC0xLjgzMywwIC0yLjExLDAuOTAzIC0zLjUyNiwwLjkwMyAtMS40MiwwIC0xLjY4NiwtMC45MzcgLTMuMTY1LC0wLjkxOCAtMS40NzksMC4wMTUgLTIuODU3LDAuOTE4IC0yLjg1NywwLjkxOCBsIDAsLTIuMTEyIHoiIGlkPSJwYXRoNjE4NzciIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiIHN0eWxlPSJjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMyOGE4ZTA7ZmlsbC1ydWxlOmV2ZW5vZGQiPjwvcGF0aD48cGF0aCBkPSJtIDYuNDUxLDIxLjUzNiBjIDAuODM5LC0wLjQ2NiAyLjAxNCwtMC44MjggMi45NTUsLTAuODI4IDEuNzk3LDAgMi4yMTMsMC44MjggMy4wOTYsMC44MjggMC44ODMsMCAxLjc5LC0wLjgyOCAzLjQyMywtMC44MjggMS40ODYsMCAyLjI3MSwwLjgyOCAzLjU5MSwwLjgyOCAxLjMyMywwIDEuMDQ4LC0wLjgyOCAyLjkxLC0wLjgyOCAxLjg1MywwIDIuNzAxLDAuODI4IDIuNzAxLDAuODI4IGwgMCwyLjExOCBjIDAsMCAtMC45ODksLTAuODg4IC0yLjU0NCwtMC45MDcgLTEuNTQzLC0wLjAxNiAtMS41MDIsMC45MDcgLTMuMDYzLDAuOTA3IC0xLjU2MiwwIC0xLjY4NywtMC45MDcgLTMuNTIxLC0wLjkwNyAtMS44MzMsMCAtMi4xMSwwLjkwNyAtMy41MjYsMC45MDcgLTEuNDIsMCAtMS42ODYsLTAuOTQgLTMuMTY1LC0wLjkyMyAtMS40NzksMC4wMTYgLTIuODU3LDAuOTIzIC0yLjg1NywwLjkyMyBsIDAsLTIuMTE4IHoiIGlkPSJwYXRoNjE4NzkiIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiIHN0eWxlPSJjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMyOGE4ZTA7ZmlsbC1ydWxlOmV2ZW5vZGQiPjwvcGF0aD48cG9seWdvbiBwb2ludHM9IjE0LjkwNCwyOC4zNjQgMTcuMjczLDE2LjQ2MSA4Ljg1NiwyMC4xNjMgMTMuNzc1LDQuNTM0IDE3Ljc4Miw0LjUzNCAxMy4xMTIsMTUuMzY5IDIxLjQyMywxMi4wMDcgIiBpZD0icG9seWdvbjYxODgxIiBzdHlsZT0iY2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojZTYyYTJiO2ZpbGwtcnVsZTpldmVub2RkIj48L3BvbHlnb24+PC9nPjwvc3ZnPg==";</script>
+
+  <!-- Components -->
+  <script type="text/babel" src="NavBar.jsx"></script>
+  <script type="text/babel" src="FilterBar.jsx"></script>
+  <script type="text/babel" src="DetailPanel.jsx"></script>
+  <script type="text/babel" src="MapPanel.jsx"></script>
+  <script type="text/babel" src="AnalyticsPage.jsx"></script>
+  <script type="text/babel" src="AddProjectPage.jsx"></script>
+
+  <!-- Main App -->
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const App = () => {
+      const [activePage, setActivePage]           = useState("map");
+      const [selectedProject, setSelectedProject] = useState(null);
+      const [activeFilters, setActiveFilters]     = useState([]);
+      const [activeProvinces, setActiveProvinces] = useState([]);
+
+      const highlightedIds = useMemo(() => {
+        if (!selectedProject) return [];
+        return [selectedProject.id, ...(selectedProject.relatedProjects || [])];
+      }, [selectedProject]);
+
+      const toggleFilter   = (opt)  => setActiveFilters(prev  => prev.includes(opt)  ? prev.filter(f => f !== opt)  : [...prev, opt]);
+      const clearFilters   = ()     => setActiveFilters([]);
+      const toggleProvince = (prov) => setActiveProvinces(prev => prev.includes(prov) ? prev.filter(p => p !== prov) : [...prev, prov]);
+      const clearProvinces = ()     => setActiveProvinces([]);
+
+      const handleSelectProject = (p) => setSelectedProject(prev => prev?.id === p.id ? null : p);
+
+      const projectCounts = useMemo(() => {
+        const visible = MOCK_PROJECTS.filter(p => {
+          const urgencyOk  = activeFilters.length === 0  || p.urgencyCategory.some(u => activeFilters.includes(u));
+          const provinceOk = activeProvinces.length === 0 || activeProvinces.includes(p.province);
+          return urgencyOk && provinceOk;
+        });
+        return {
+          total:        visible.length,
+          energized:    visible.filter(p => p.status === "Energized").length,
+          construction: visible.filter(p => p.status === "Construction").length,
+          preCon:       visible.filter(p => p.status === "Pre-Construction").length,
+        };
+      }, [activeFilters, activeProvinces]);
+
+      return (
+        <div style={appStyles.shell}>
+          {/* Top nav — always visible */}
+          <NavBar activePage={activePage} onNavigate={setActivePage} />
+
+          {/* Page: Map */}
+          {activePage === "map" && (
+            <div style={appStyles.mapShell}>
+              <FilterBar
+                activeFilters={activeFilters}
+                onToggle={toggleFilter}
+                onClearAll={clearFilters}
+                projectCounts={projectCounts}
+                activeProvinces={activeProvinces}
+                onProvinceToggle={toggleProvince}
+                onProvinceClearAll={clearProvinces}
+              />
+              <div style={appStyles.main}>
+                <div style={appStyles.mapArea}>
+                  <MapPanel
+                    projects={MOCK_PROJECTS}
+                    selectedId={selectedProject?.id}
+                    highlightedIds={highlightedIds}
+                    onSelectProject={handleSelectProject}
+                    activeFilters={activeFilters}
+                    activeProvinces={activeProvinces}
+                  />
+                </div>
+                <div style={appStyles.detailArea}>
+                  <DetailPanel
+                    project={selectedProject}
+                    allProjects={MOCK_PROJECTS}
+                    onSelectProject={handleSelectProject}
+                  />
+                </div>
+              </div>
+              <div style={appStyles.statusBar}>
+                <span style={appStyles.statusItem}>
+                  <span style={{ ...appStyles.statusDot, background: "#10B981" }}></span>
+                  System Online
+                </span>
+                <span style={appStyles.statusItem}>Last updated: 27 April 2026, 08:00 WIB</span>
+                <span style={appStyles.statusItem}>
+                  {(activeFilters.length > 0 || activeProvinces.length > 0)
+                    ? `Filter: ${[...activeProvinces, ...activeFilters].join(" · ")}`
+                    : `Menampilkan ${MOCK_PROJECTS.length} proyek · Klik node untuk detail`}
+                </span>
+                <span style={{ ...appStyles.statusItem, marginLeft: "auto" }}>RUPTL 2024–2033 · PLN Pusat</span>
+              </div>
+            </div>
+          )}
+
+          {/* Page: Analytics */}
+          {activePage === "analytics" && <AnalyticsPage />}
+
+          {/* Page: Input */}
+          {activePage === "input" && <AddProjectPage />}
+        </div>
+      );
+    };
+
+    const appStyles = {
+      shell:    { display:"flex", flexDirection:"column", height:"100vh", width:"100vw", overflow:"hidden", background:"#0B1220" },
+      mapShell: { display:"flex", flexDirection:"column", flex:1, overflow:"hidden", minHeight:0 },
+      main:     { display:"flex", flex:1, overflow:"hidden", minHeight:0 },
+      mapArea:  { flex:1, display:"flex", flexDirection:"column", minWidth:0, overflow:"hidden", borderRight:"1px solid #1F2937" },
+      detailArea:{ width:"320px", flexShrink:0, display:"flex", flexDirection:"column", overflow:"hidden", background:"#111827" },
+      statusBar:{ display:"flex", alignItems:"center", gap:"20px", padding:"5px 20px", background:"#0D1526", borderTop:"1px solid #1F2937", flexShrink:0 },
+      statusItem:{ fontSize:"10px", color:"#4B5563", display:"flex", alignItems:"center", gap:"5px" },
+      statusDot: { width:"6px", height:"6px", borderRadius:"50%", animation:"pulse 2s infinite" },
+    };
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+
+  <style>
+    @keyframes pulse { 0%, 100% { opacity:1; } 50% { opacity:0.4; } }
+    @keyframes spin   { to { transform:rotate(360deg); } }
+  </style>
+</body>
+</html>
