@@ -1,10 +1,222 @@
-// Phase 4 — will be fully implemented with charts and aggregation data from /api/analytics/summary
-export default function AnalyticsPage() {
+import { useEffect, useState, CSSProperties } from 'react';
+import { analyticsApi } from '../lib/api';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Summary {
+  total:      number;
+  byStatus:   { status: string; count: number }[];
+  byType:     { type: string;   count: number }[];
+  byIsland:   { island: string; count: number }[];
+  byProvince: { province: string; count: number }[];
+  byTrack:    { energized: number; idle: number; delayed: number; on_track: number };
+  capacity:   { total_mw: number; total_mva: number; total_km: number };
+}
+
+// ── Donut Chart (SVG) ─────────────────────────────────────────────────────────
+function DonutChart({ data, colors, size = 130, hole = 0.62 }: {
+  data: { label: string; value: number }[];
+  colors: string[];
+  size?: number;
+  hole?: number;
+}) {
+  const total = data.reduce((s, d) => s + (d.value || 0), 0);
+  if (!total) return <div style={{ width: size, height: size, flexShrink: 0 }} />;
+
+  const cx = size / 2, cy = size / 2, r = size / 2 - 4, ir = r * hole;
+  let angle = -Math.PI / 2;
+
+  const slices = data.map((d, i) => {
+    const a  = (d.value / total) * 2 * Math.PI;
+    const ea = angle + a;
+    const x1 = cx + r  * Math.cos(angle), y1 = cy + r  * Math.sin(angle);
+    const x2 = cx + r  * Math.cos(ea),    y2 = cy + r  * Math.sin(ea);
+    const ix1= cx + ir * Math.cos(ea),   iy1 = cy + ir * Math.sin(ea);
+    const ix2= cx + ir * Math.cos(angle),iy2 = cy + ir * Math.sin(angle);
+    const lg = a > Math.PI ? 1 : 0;
+    const path = `M ${x1} ${y1} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${ir} ${ir} 0 ${lg} 0 ${ix2} ${iy2} Z`;
+    angle = ea;
+    return { path, color: colors[i % colors.length], value: d.value };
+  });
+
   return (
-    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, color:'#4B5563' }}>
-      <span style={{ fontSize:32 }}>📊</span>
-      <span style={{ fontSize:14, fontWeight:600 }}>Ringkasan Proyek</span>
-      <span style={{ fontSize:12 }}>Diimplementasi pada Phase 4</span>
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {slices.map((s, i) => <path key={i} d={s.path} fill={s.color} opacity={0.9} />)}
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+        <div style={{ fontSize:22, fontWeight:800, color:'#F9FAFB', lineHeight:1 }}>{total}</div>
+        <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', color:'#4B5563', textTransform:'uppercase', marginTop:2 }}>Total</div>
+      </div>
     </div>
   );
 }
+
+// ── Horizontal Bar ────────────────────────────────────────────────────────────
+function HBar({ rows, color, unit }: { rows: { label: string; value: number }[]; color: string; unit: string }) {
+  const max = Math.max(...rows.map(r => r.value), 1);
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      {rows.map((row, i) => (
+        <div key={i}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+            <span style={{ fontSize:11, color:'#9CA3AF', maxWidth:'60%', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{row.label}</span>
+            <span style={{ fontSize:11, fontWeight:700, color, fontFamily:'monospace' }}>{row.value.toLocaleString()} {unit}</span>
+          </div>
+          <div style={{ height:7, background:'#1F2937', borderRadius:4, overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${(row.value/max)*100}%`, background:color, borderRadius:4, transition:'width 600ms ease', opacity:0.85 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+function Legend({ items }: { items: { label: string; value: number; color: string }[] }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:10, height:10, borderRadius:2, background:item.color, flexShrink:0, boxShadow:`0 0 4px ${item.color}60` }} />
+          <span style={{ fontSize:11, color:'#9CA3AF', flex:1 }}>{item.label}</span>
+          <span style={{ fontSize:12, fontWeight:700, color:item.color, fontFamily:'monospace' }}>{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── KPI Card ──────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, unit, color, sub }: { label: string; value: number | string; unit?: string; color: string; sub?: string }) {
+  return (
+    <div style={a.kpiCard}>
+      <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.07em', textTransform:'uppercase', color:'#4B5563', marginBottom:8 }}>{label}</div>
+      <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+        <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
+        {unit && <div style={{ fontSize:13, fontWeight:600, color:'#6B7280' }}>{unit}</div>}
+      </div>
+      {sub && <div style={{ fontSize:10, color:'#4B5563', marginTop:4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Chart Card wrapper ────────────────────────────────────────────────────────
+function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div style={a.chartCard}>
+      <div style={{ marginBottom:14 }}>
+        <div style={{ fontSize:12, fontWeight:700, color:'#E5E7EB' }}>{title}</div>
+        {subtitle && <div style={{ fontSize:10, color:'#4B5563', marginTop:2 }}>{subtitle}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Helper: label map ─────────────────────────────────────────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  ENERGIZED: 'Energized', CONSTRUCTION: 'Construction', PRE_CONSTRUCTION: 'Pre-Construction',
+};
+const TYPE_LABELS: Record<string, string> = {
+  POWER_PLANT: 'Power Plant', SUBSTATION: 'Substation', TRANSMISSION_LINE: 'Transmission Line',
+};
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+export default function AnalyticsPage() {
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState('');
+
+  useEffect(() => {
+    analyticsApi.summary()
+      .then(res => setSummary(res.data))
+      .catch(() => setError('Gagal memuat data analitik'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:'#4B5563' }}>
+      <div style={{ width:24, height:24, border:'2px solid #374151', borderTopColor:'#0E91A5', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      <span style={{ fontSize:12 }}>Memuat data analitik…</span>
+    </div>
+  );
+
+  if (error || !summary) return (
+    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', color:'#EF4444', fontSize:13 }}>{error || 'Tidak ada data'}</div>
+  );
+
+  const { total, byStatus, byType, byIsland, byProvince, byTrack, capacity } = summary;
+
+  const statusData = byStatus.map(s => ({ label: STATUS_LABELS[s.status] ?? s.status, value: s.count }));
+  const typeData   = byType.map(t => ({ label: TYPE_LABELS[t.type] ?? t.type, value: t.count }));
+  const trackData  = [
+    { label: 'On Track',  value: byTrack.on_track, color: '#10B981' },
+    { label: 'Delayed',   value: byTrack.delayed,  color: '#EF4444' },
+    { label: 'Idle',      value: byTrack.idle,     color: '#6B7280' },
+    { label: 'Energized', value: byTrack.energized,color: '#8B5CF6' },
+  ];
+
+  const islandRows   = byIsland.sort((a,b) => b.count - a.count).map(i => ({ label: i.island,    value: i.count }));
+  const provinceRows = byProvince.slice(0, 8).map(p => ({ label: p.province, value: p.count }));
+
+  return (
+    <div style={a.page}>
+      <div>
+        <div style={{ fontSize:20, fontWeight:700, color:'#F9FAFB', marginBottom:4 }}>Ringkasan Proyek RUPTL</div>
+        <div style={{ fontSize:12, color:'#6B7280' }}>Statistik dan visualisasi seluruh proyek infrastruktur ketenagalistrikan nasional</div>
+      </div>
+
+      {/* KPI row */}
+      <div style={a.kpiRow}>
+        <KpiCard label="Total Proyek"         value={total}                        color="#F9FAFB"  sub={`${byTrack.energized} Energized · ${byStatus.find(s=>s.status==='CONSTRUCTION')?.count??0} Construction`} />
+        <KpiCard label="Total Kapasitas"       value={Math.round(+capacity.total_mw)}  unit="MW"   color="#10B981" sub="Pembangkit (Power Plant)" />
+        <KpiCard label="Panjang Jaringan"      value={Math.round(+capacity.total_km)}  unit="km"   color="#3B82F6" sub="Transmisi SUTT & SUTET" />
+        <KpiCard label="Kapasitas Gardu"       value={Math.round(+capacity.total_mva)} unit="MVA"  color="#0E91A5" sub="Gardu Induk (Substation)" />
+        <KpiCard label="Proyek Terlambat"      value={byTrack.delayed}                  color="#EF4444" sub={`dari ${total} total proyek`} />
+      </div>
+
+      {/* Donuts row */}
+      <div style={a.triRow}>
+        <ChartCard title="Status Proyek" subtitle="Tahap pelaksanaan">
+          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+            <DonutChart data={statusData} colors={['#3B82F6','#F59E0B','#10B981']} size={130} />
+            <Legend items={statusData.map((d,i) => ({ ...d, color: ['#3B82F6','#F59E0B','#10B981'][i] }))} />
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Progress Proyek" subtitle="On Track / Delayed / Idle / Energized">
+          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+            <DonutChart data={trackData} colors={trackData.map(t=>t.color)} size={130} />
+            <Legend items={trackData} />
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Tipe Proyek" subtitle="Jenis infrastruktur">
+          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+            <DonutChart data={typeData} colors={['#10B981','#0E91A5','#3B82F6']} size={130} />
+            <Legend items={typeData.map((d,i) => ({ ...d, color: ['#10B981','#0E91A5','#3B82F6'][i] }))} />
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Bar charts row */}
+      <div style={a.biRow}>
+        <ChartCard title="Proyek per Pulau" subtitle="Jumlah proyek">
+          <HBar rows={islandRows} color="#0E91A5" unit="proyek" />
+        </ChartCard>
+        <ChartCard title="Proyek per Provinsi (Top 8)" subtitle="Jumlah proyek">
+          <HBar rows={provinceRows} color="#3B82F6" unit="proyek" />
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+const a: Record<string, CSSProperties> = {
+  page:     { flex:1, overflowY:'auto', background:'#0B1220', padding:'24px', display:'flex', flexDirection:'column', gap:20 },
+  kpiRow:   { display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 },
+  kpiCard:  { background:'#111827', border:'1px solid #1F2937', borderRadius:8, padding:'16px 18px' },
+  triRow:   { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 },
+  biRow:    { display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 },
+  chartCard:{ background:'#111827', border:'1px solid #1F2937', borderRadius:8, padding:'18px 20px' },
+};

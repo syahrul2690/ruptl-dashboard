@@ -21,6 +21,8 @@ export interface ProjectSlim {
   island:          string;
   province:        string;
   urgencyCategory: string[];
+  lineFromId?:     string | null;
+  lineToId?:       string | null;
 }
 
 export interface Project extends ProjectSlim {

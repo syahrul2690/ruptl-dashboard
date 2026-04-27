@@ -10,6 +10,7 @@ const SLIM_SELECT = {
   id: true, lat: true, lng: true, status: true,
   type: true, subtype: true, issueType: true,
   name: true, island: true, province: true, urgencyCategory: true,
+  lineFromId: true, lineToId: true,
 };
 
 @Injectable()

@@ -7,4 +7,4 @@ build/
 .DS_Store
 .cache/
 coverage/
-prisma/migrations/*.sql
+# prisma migrations must be committed — do NOT ignore them
