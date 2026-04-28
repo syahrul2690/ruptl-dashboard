@@ -45,8 +45,11 @@ export class ImportService {
       const province   = g('province',   'Provinsi');
       const island     = g('island',     'Pulau');
       const gridSystem = g('gridSystem', 'Sistem Grid');
-      const lat        = parseFloat(g('lat', 'Latitude'));
-      const lng        = parseFloat(g('lng', 'Longitude'));
+      const latRaw     = g('lat', 'Latitude');
+      const lngRaw     = g('lng', 'Longitude');
+      const lat        = latRaw ? parseFloat(latRaw) : null;
+      const lng        = lngRaw ? parseFloat(lngRaw) : null;
+      const isTransmission = type === 'transmission line';
 
       if (!name)               rowErrors.push({ row: n, field: 'name',       message: 'Wajib diisi' });
       if (!TYPE_MAP[type])     rowErrors.push({ row: n, field: 'type',       message: `Nilai tidak valid: "${type}"` });
@@ -55,8 +58,9 @@ export class ImportService {
       if (!province)           rowErrors.push({ row: n, field: 'province',   message: 'Wajib diisi' });
       if (!island)             rowErrors.push({ row: n, field: 'island',     message: 'Wajib diisi' });
       if (!gridSystem)         rowErrors.push({ row: n, field: 'gridSystem', message: 'Wajib diisi' });
-      if (isNaN(lat))          rowErrors.push({ row: n, field: 'lat',        message: 'Harus angka valid' });
-      if (isNaN(lng))          rowErrors.push({ row: n, field: 'lng',        message: 'Harus angka valid' });
+      // lat/lng only required for Power Plant and Substation — Transmission Line derives position from endpoints
+      if (!isTransmission && (lat === null || isNaN(lat))) rowErrors.push({ row: n, field: 'lat', message: 'Wajib diisi untuk tipe ini' });
+      if (!isTransmission && (lng === null || isNaN(lng))) rowErrors.push({ row: n, field: 'lng', message: 'Wajib diisi untuk tipe ini' });
 
       if (rowErrors.length) { errors.push(...rowErrors); return; }
 
@@ -80,7 +84,9 @@ export class ImportService {
         progressPlan:      parseInt(String(row['progressPlan']      || 0)) || 0,
         progressRealisasi: parseInt(String(row['progressRealisasi'] || 0)) || 0,
         deviasi:           parseInt(String(row['deviasi']           || 0)) || 0,
-        lat, lng, island, province, gridSystem,
+        lat: (lat !== null && !isNaN(lat)) ? lat : null,
+        lng: (lng !== null && !isNaN(lng)) ? lng : null,
+        island, province, gridSystem,
         capacity:      parseFloat(String(row['capacity']      || '')) || null,
         capacityUnit:  g('capacityUnit', '') || null,
         circuitLength: parseFloat(String(row['circuitLength'] || '')) || null,

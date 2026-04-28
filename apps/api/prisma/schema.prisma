@@ -53,8 +53,8 @@ model Project {
   progressPlan      Int           @default(0)
   progressRealisasi Int           @default(0)
   deviasi           Int           @default(0)
-  lat               Float
-  lng               Float
+  lat               Float?
+  lng               Float?
   island            String
   province          String
   gridSystem        String

@@ -15,8 +15,8 @@ export class CreateProjectDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100)  progressPlan?:      number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100)  progressRealisasi?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-100) @Max(100) deviasi?:         number;
-  @Type(() => Number) @IsNumber()               lat:               number;
-  @Type(() => Number) @IsNumber()               lng:               number;
+  @IsOptional() @Type(() => Number) @IsNumber() lat?:              number;
+  @IsOptional() @Type(() => Number) @IsNumber() lng?:              number;
   @IsString()                                   island:            string;
   @IsString()                                   province:          string;
   @IsString()                                   gridSystem:        string;

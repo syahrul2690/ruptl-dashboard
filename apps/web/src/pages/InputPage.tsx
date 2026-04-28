@@ -338,12 +338,20 @@ function ManualForm() {
           <Input value={form.gridSystem} onChange={set('gridSystem')} placeholder="e.g. Jawa-Bali" />
         </Field>
         <div />
-        <Field label="Latitude">
-          <Input type="number" step="0.0001" value={form.lat} onChange={set('lat')} placeholder="-7.2575" />
-        </Field>
-        <Field label="Longitude">
-          <Input type="number" step="0.0001" value={form.lng} onChange={set('lng')} placeholder="112.7521" />
-        </Field>
+        {isTransmission ? (
+          <div style={{ gridColumn: '1 / -1', background: '#0D1526', border: '1px solid #1F2937', borderRadius: 6, padding: '10px 14px', fontSize: 11, color: '#4B5563' }}>
+            Latitude & Longitude tidak diperlukan untuk Transmission Line — posisi pada peta diturunkan dari titik asal dan tujuan (<code style={{ fontFamily: 'monospace', color: '#8B5CF6' }}>lineFromId</code> / <code style={{ fontFamily: 'monospace', color: '#8B5CF6' }}>lineToId</code>).
+          </div>
+        ) : (
+          <>
+            <Field label="Latitude *">
+              <Input type="number" step="0.0001" value={form.lat} onChange={set('lat')} placeholder="-7.2575" />
+            </Field>
+            <Field label="Longitude *">
+              <Input type="number" step="0.0001" value={form.lng} onChange={set('lng')} placeholder="112.7521" />
+            </Field>
+          </>
+        )}
       </div>
 
       {/* Hubungan Proyek */}
@@ -500,9 +508,9 @@ function downloadTemplate() {
      'Q1 2026','Q1 2026','Q2 2026','20','15','-5',
      '1000','MVA','','500kV','None','RUPTL','',
      '','','SS-PP-003'],   // relatedCodes → references PLTU above
-    // Transmission line — lineFromCode and lineToCode must be ruptlCodes of existing projects
+    // Transmission line — lat/lng dikosongkan, posisi diambil dari lineFromCode & lineToCode
     ['JT-T-001','SUTET 500kV Paiton – Krian','transmission line','SUTET 500kV','construction',
-     'Jawa Timur','Jawa','Jawa-Bali','-7.688','112.899',
+     'Jawa Timur','Jawa','Jawa-Bali','','',
      'Q3 2025','Q4 2025','Q1 2026','65','58','-7',
      '','','485','500kV','None','RUPTL;Kehandalan Sistem','',
      'SS-PP-003','JT-G-002',''],  // lineFromCode=PLTU, lineToCode=GI Krian
@@ -645,6 +653,10 @@ function ExcelImport() {
           <div style={{ fontSize: 11, color: '#6B7280' }}>
             <span style={{ color: '#9CA3AF', fontWeight: 600 }}>urgencyCategory / relatedCodes:</span>{' '}
             pisahkan dengan titik koma (;) untuk lebih dari satu nilai
+          </div>
+          <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <span style={{ color: '#9CA3AF', fontWeight: 600 }}>lat / lng:</span>{' '}
+            wajib untuk <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>power plant</code> dan <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>substation</code> · kosongkan untuk <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>transmission line</code>
           </div>
         </div>
       </div>
