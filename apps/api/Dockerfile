@@ -2,6 +2,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+RUN apk add --no-cache openssl
 RUN npm install -g pnpm
 
 # Install all workspace deps (cached layer)
@@ -21,6 +22,7 @@ RUN pnpm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+RUN apk add --no-cache openssl
 RUN npm install -g pnpm
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
