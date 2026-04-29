@@ -8,7 +8,7 @@ import { RefreshGuard } from './guards/refresh.guard';
 const COOKIE_BASE = {
   httpOnly: true,
   sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  secure: process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production',
   path: '/',
 };
 
