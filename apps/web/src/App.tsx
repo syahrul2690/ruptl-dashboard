@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProjectStatsProvider } from './context/ProjectStatsContext';
 import { Role } from './lib/types';
 import LoginPage     from './pages/LoginPage';
 import MapPage       from './pages/MapPage';
@@ -32,6 +33,7 @@ function Layout({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
+    <ProjectStatsProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -52,5 +54,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ProjectStatsProvider>
   );
 }

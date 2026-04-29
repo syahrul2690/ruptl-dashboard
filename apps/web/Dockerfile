@@ -10,6 +10,7 @@ COPY apps/web/package.json ./apps/web/
 RUN pnpm install --frozen-lockfile --filter web...
 
 # Copy source
+COPY tsconfig.base.json ./
 COPY apps/web ./apps/web
 
 WORKDIR /app/apps/web

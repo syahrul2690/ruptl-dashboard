@@ -675,7 +675,7 @@ function ExcelImport() {
             {stage === 'previewing' ? 'Membaca…' : 'Preview Validasi'}
           </button>
           {stage === 'preview' && preview && preview.validRows > 0 && (
-            <button type="button" disabled={stage === 'committing'} onClick={handleCommit} style={s.btnPrimary}>
+            <button type="button" disabled={(stage as string) === 'committing'} onClick={handleCommit} style={s.btnPrimary}>
               {(stage as string) === 'committing' ? 'Mengimpor…' : `Import ${preview.validRows} Proyek Valid`}
             </button>
           )}

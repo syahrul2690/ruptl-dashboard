@@ -71,8 +71,9 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
   // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
 
-    const map = L.map(containerRef.current, {
+    const map = L.map(container, {
       center: [-2.5, 118.0],
       zoom: 5,
       zoomControl: false,
@@ -87,6 +88,15 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
 
     L.control.zoom({ position: 'topright' }).addTo(map);
     mapRef.current = map;
+
+    // Force Leaflet to recalculate container size (fixes flex-layout height issues)
+    setTimeout(() => map.invalidateSize(), 0);
+
+    // Keep map sized correctly when the container resizes (e.g. panel open/close)
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(container);
+
+    return () => ro.disconnect();
   }, []);
 
   // Redraw overlays when data/filters/selection change
@@ -112,7 +122,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       .forEach(line => {
         const from = byId.get(line.lineFromId!);
         const to   = byId.get(line.lineToId!);
-        if (!from || !to) return;
+        if (!from || !to || from.lat == null || from.lng == null || to.lat == null || to.lng == null) return;
 
         const visible  = isVisible(line, activeFilters, activeProvinces, activeStatuses);
         const isSel    = line.id === selectedId;
@@ -134,7 +144,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         linesRef.current.push(poly);
 
         // Mid-point label
-        const mid: L.LatLngTuple = [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2];
+        const mid: L.LatLngTuple = [(from.lat! + to.lat!) / 2, (from.lng! + to.lng!) / 2];
         const lblIcon = L.divIcon({
           className: '',
           html: `<div style="background:rgba(11,18,32,0.85);color:${color};font-size:9px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid ${color}40;white-space:nowrap;pointer-events:none;">${line.subtype}</div>`,
@@ -145,6 +155,10 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       });
 
     // ── Point markers (clustered) ─────────────────────────────────────
+    if (typeof (L as any).markerClusterGroup !== 'function') {
+      console.error('[MapPanel] L.markerClusterGroup is not available — leaflet.markercluster may not have loaded');
+      return;
+    }
     const cluster = (L as any).markerClusterGroup({
       chunkedLoading: true,
       spiderfyOnMaxZoom: true,
@@ -160,7 +174,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
     }) as L.MarkerClusterGroup;
 
     projects
-      .filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat && p.lng)
+      .filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat != null && p.lng != null)
       .forEach(p => {
         const isSel = p.id === selectedId;
         const isHl  = highlightedIds.includes(p.id);
@@ -174,7 +188,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           iconAnchor: [sz / 2, sz / 2],
         });
 
-        const marker = L.marker([p.lat, p.lng], {
+        const marker = L.marker([p.lat!, p.lng!], {
           icon,
           opacity:       vis ? 1 : 0.08,
           zIndexOffset:  isSel ? 1000 : 0,
@@ -193,6 +207,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
 
     map.addLayer(cluster);
     clusterRef.current = cluster;
+    console.log(`[MapPanel] drew ${projects.filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat != null).length} markers, ${projects.filter(p => p.type === 'TRANSMISSION_LINE').length} lines`);
   }, [projects, selectedId, highlightedIds, activeFilters, activeProvinces, activeStatuses]);
 
   // Cleanup on unmount

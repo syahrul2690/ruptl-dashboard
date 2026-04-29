@@ -2,10 +2,13 @@ import { useState, useRef, useEffect, CSSProperties } from 'react';
 import { ProjectStatus, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
 
 export interface ProjectCounts {
-  total:        number;
-  energized:    number;
-  construction: number;
-  preCon:       number;
+  total:            number;
+  energized:        number;
+  construction:     number;
+  preCon:           number;
+  powerPlant:       number;
+  substation:       number;
+  transmissionLine: number;
 }
 
 interface Props {
@@ -37,22 +40,22 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const has = activeProvinces.length > 0;
+  const has   = activeProvinces.length > 0;
   const label = has
     ? activeProvinces.length === 1 ? activeProvinces[0] : `${activeProvinces.length} Provinsi`
     : 'Semua Provinsi';
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
       <button onClick={() => setOpen(o => !o)} style={{
         ...f.pill,
         background:  has ? 'rgba(14,145,165,0.12)' : 'rgba(255,255,255,0.04)',
         color:       has ? '#0E91A5' : '#9CA3AF',
         borderColor: has ? 'rgba(14,145,165,0.5)' : '#374151',
-        padding:     '4px 11px', gap: 5,
+        padding: '4px 11px', gap: 5,
       }}>
         📍 {label}
-        <span style={{ marginLeft: 2, display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>▾</span>
+        <span style={{ marginLeft:2, display:'inline-block', transform:open?'rotate(180deg)':'none', transition:'transform 150ms' }}>▾</span>
       </button>
 
       {open && (
@@ -65,7 +68,7 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
             const active = activeProvinces.includes(prov);
             return (
               <div key={prov} onClick={() => onToggle(prov)} style={{ ...f.dropItem, background: active ? 'rgba(14,145,165,0.1)' : 'transparent', color: active ? '#0E91A5' : '#9CA3AF' }}>
-                <div style={{ width:14, height:14, borderRadius:3, flexShrink:0, border:`1.5px solid ${active ? '#0E91A5' : '#374151'}`, background: active ? '#0E91A5' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:14, height:14, borderRadius:3, flexShrink:0, border:`1.5px solid ${active?'#0E91A5':'#374151'}`, background:active?'#0E91A5':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   {active && <span style={{ color:'#fff', fontSize:9, lineHeight:1 }}>✓</span>}
                 </div>
                 {prov}
@@ -89,15 +92,19 @@ export default function FilterBar({
   activeProvinces, onProvinceToggle, onProvinceClear,
   activeStatuses, onStatusToggle, onStatusClear,
 }: Props) {
+  // suppress unused-var warning — projectCounts is kept in interface for MapPage
+  void projectCounts;
+
   return (
     <div style={f.bar}>
-      {/* Province */}
+
+      {/* Province dropdown */}
       <ProvinceDropdown activeProvinces={activeProvinces} onToggle={onProvinceToggle} onClearAll={onProvinceClear} />
 
       <div style={f.divider} />
 
       {/* Status filter */}
-      <div style={f.group}>
+      <div style={{ ...f.group, flexShrink:0 }}>
         <span style={f.label}>STATUS</span>
         {STATUS_PILLS.map(({ value, label, color }) => {
           const active = activeStatuses.includes(value);
@@ -120,8 +127,8 @@ export default function FilterBar({
 
       <div style={f.divider} />
 
-      {/* Urgency filter */}
-      <div style={f.group}>
+      {/* Urgency filter — flex:1 so it gets all remaining space */}
+      <div style={{ ...f.group, flex:1, minWidth:0, flexWrap:'wrap' }}>
         <span style={f.label}>URGENCY</span>
         {URGENCY_OPTIONS.map(opt => {
           const active = activeFilters.includes(opt);
@@ -143,33 +150,17 @@ export default function FilterBar({
         )}
       </div>
 
-      {/* Stats */}
-      <div style={f.stats}>
-        {[
-          { label: 'Total',        val: projectCounts.total,        color: '#9CA3AF' },
-          { label: 'Energized',    val: projectCounts.energized,    color: '#10B981' },
-          { label: 'Construction', val: projectCounts.construction, color: '#F59E0B' },
-          { label: 'Pre-Con',      val: projectCounts.preCon,       color: '#3B82F6' },
-        ].map(s => (
-          <div key={s.label} style={f.stat}>
-            <div style={{ fontSize:17, fontWeight:700, lineHeight:1, color:s.color }}>{s.val}</div>
-            <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.06em', color:'#4B5563', textTransform:'uppercase', marginTop:1 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
 const f: Record<string, CSSProperties> = {
-  bar:      { display:'flex', alignItems:'center', gap:10, padding:'7px 16px', background:'#111827', borderBottom:'1px solid #1F2937', flexWrap:'wrap', flexShrink:0 },
-  divider:  { width:1, height:26, background:'#1F2937', flexShrink:0 },
-  group:    { display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' },
+  bar:      { display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:'#111827', borderBottom:'1px solid #1F2937', flexShrink:0, flexWrap:'nowrap' },
+  divider:  { width:1, height:24, background:'#1F2937', alignSelf:'center', flexShrink:0 },
+  group:    { display:'flex', alignItems:'center', gap:5, flexWrap:'nowrap' },
   label:    { fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:'#4B5563', flexShrink:0, textTransform:'uppercase' },
-  pill:     { display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:9999, fontSize:10, fontWeight:500, cursor:'pointer', border:'1px solid', transition:'all 150ms', fontFamily:'inherit', flexShrink:0 },
-  clearBtn: { padding:'3px 8px', borderRadius:9999, fontSize:10, fontWeight:600, background:'transparent', color:'#6B7280', border:'1px solid #374151', cursor:'pointer', fontFamily:'inherit' },
-  stats:    { display:'flex', gap:14, flexShrink:0, marginLeft:'auto' },
-  stat:     { textAlign:'center' },
+  pill:     { display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:9999, fontSize:10, fontWeight:500, cursor:'pointer', border:'1px solid', transition:'all 150ms', fontFamily:'inherit', flexShrink:0, whiteSpace:'nowrap' },
+  clearBtn: { padding:'3px 8px', borderRadius:9999, fontSize:10, fontWeight:600, background:'transparent', color:'#6B7280', border:'1px solid #374151', cursor:'pointer', fontFamily:'inherit', flexShrink:0 },
   dropdown: { position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:9999, background:'#111827', border:'1px solid #374151', borderRadius:8, minWidth:200, boxShadow:'0 8px 24px rgba(0,0,0,0.6)', overflow:'hidden', maxHeight:320, overflowY:'auto' },
   dropHead: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', borderBottom:'1px solid #1F2937' },
   dropTitle:{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#4B5563' },

@@ -11,5 +11,5 @@ export class ListProjectsDto {
   @IsOptional() @Transform(({ value }) => value === 'slim' ? 'slim' : undefined)
                                                    fields?:   'slim';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)          page?:  number = 1;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number = 50;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(10000) limit?: number = 50;
 }

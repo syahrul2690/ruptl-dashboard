@@ -4,8 +4,10 @@ import { projectsApi } from '../lib/api';
 import FilterBar, { ProjectCounts } from '../components/FilterBar';
 import MapPanel from '../components/MapPanel';
 import DetailPanel from '../components/DetailPanel';
+import { useProjectStats } from '../context/ProjectStatsContext';
 
 export default function MapPage() {
+  const { setCounts } = useProjectStats();
   const [projects,        setProjects]        = useState<ProjectSlim[]>([]);
   const [loadingMap,      setLoadingMap]       = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -39,6 +41,22 @@ export default function MapPage() {
     }
   }, [selectedProject]);
 
+  // After an inline edit, update the full selected project AND patch the slim list
+  const handleProjectUpdated = useCallback((updated: Project) => {
+    setSelectedProject(updated);
+    setProjects(prev => prev.map(p =>
+      p.id === updated.id
+        ? { ...p, status: updated.status, issueType: updated.issueType, urgencyCategory: updated.urgencyCategory }
+        : p
+    ));
+  }, []);
+
+  // After delete, remove from slim list and deselect
+  const handleProjectDeleted = useCallback((id: string) => {
+    setSelectedProject(null);
+    setProjects(prev => prev.filter(p => p.id !== id));
+  }, []);
+
   const highlightedIds = useMemo(() => {
     if (!selectedProject) return [];
     return [selectedProject.id, ...(selectedProject.relatedProjects ?? [])];
@@ -52,12 +70,18 @@ export default function MapPage() {
       return statusOk && urgencyOk && provinceOk;
     });
     return {
-      total:        visible.length,
-      energized:    visible.filter(p => p.status === 'ENERGIZED').length,
-      construction: visible.filter(p => p.status === 'CONSTRUCTION').length,
-      preCon:       visible.filter(p => p.status === 'PRE_CONSTRUCTION').length,
+      total:            visible.length,
+      energized:        visible.filter(p => p.status === 'ENERGIZED').length,
+      construction:     visible.filter(p => p.status === 'CONSTRUCTION').length,
+      preCon:           visible.filter(p => p.status === 'PRE_CONSTRUCTION').length,
+      powerPlant:       visible.filter(p => p.type === 'POWER_PLANT').length,
+      substation:       visible.filter(p => p.type === 'SUBSTATION').length,
+      transmissionLine: visible.filter(p => p.type === 'TRANSMISSION_LINE').length,
     };
   }, [projects, activeFilters, activeProvinces, activeStatuses]);
+
+  // Sync counts to NavBar via context
+  useEffect(() => { setCounts(projectCounts); }, [projectCounts, setCounts]);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', minHeight:0 }}>
@@ -96,13 +120,17 @@ export default function MapPage() {
           />
         </div>
 
-        {/* Detail panel */}
-        <div style={{ width:320, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#111827' }}>
+        {/* Right panel: detail */}
+        <div style={{ width:400, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#111827' }}>
+
+          {/* ── Detail panel ── */}
           <DetailPanel
             project={selectedProject}
             loading={loadingDetail}
             slimProjects={projects}
             onSelectProject={handleSelectProject}
+            onProjectUpdated={handleProjectUpdated}
+            onProjectDeleted={handleProjectDeleted}
           />
         </div>
       </div>

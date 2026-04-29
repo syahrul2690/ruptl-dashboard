@@ -11,8 +11,8 @@ export interface User {
 
 export interface ProjectSlim {
   id:              string;
-  lat:             number;
-  lng:             number;
+  lat:             number | null;
+  lng:             number | null;
   status:          ProjectStatus;
   type:            ProjectType;
   subtype:         string;
