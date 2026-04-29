@@ -14,6 +14,7 @@ COPY tsconfig.base.json ./
 COPY apps/api ./apps/api
 
 WORKDIR /app/apps/api
+RUN npx prisma generate
 RUN pnpm run build
 
 # ── Runner ────────────────────────────────────────────────────────────────────
