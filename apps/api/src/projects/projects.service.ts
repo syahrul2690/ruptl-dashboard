@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -15,7 +17,15 @@ const SLIM_SELECT = {
 
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
+
+  private async invalidateAnalytics() {
+    await this.cache.del('analytics:summary');
+  }
 
   async findAll(q: ListProjectsDto) {
     const where: Prisma.ProjectWhereInput = {};
@@ -57,6 +67,7 @@ export class ProjectsService {
   async create(dto: CreateProjectDto, userId: string, userEmail: string, ip?: string) {
     const project = await this.prisma.project.create({ data: { ...dto, createdById: userId } });
     await this.audit.log({ userId, userEmail, action: 'CREATE', entity: 'Project', entityId: project.id, ip });
+    await this.invalidateAnalytics();
     return project;
   }
 
@@ -67,6 +78,7 @@ export class ProjectsService {
       data:  { ...dto, updatedById: userId },
     });
     await this.audit.log({ userId, userEmail, action: 'UPDATE', entity: 'Project', entityId: id, diff: dto as object, ip });
+    await this.invalidateAnalytics();
     return project;
   }
 
@@ -74,6 +86,7 @@ export class ProjectsService {
     await this.findOne(id);
     await this.prisma.project.delete({ where: { id } });
     await this.audit.log({ userId, userEmail, action: 'DELETE', entity: 'Project', entityId: id, ip });
+    await this.invalidateAnalytics();
     return { ok: true };
   }
 }

@@ -1,6 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { ProjectStatus, ProjectType } from '@prisma/client';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -21,7 +23,11 @@ type RowError = { row: number; field: string; message: string };
 
 @Injectable()
 export class ImportService {
-  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
 
   private parseBuffer(buffer: Buffer): Record<string, any>[] {
     const wb = XLSX.read(buffer, { type: 'buffer' });
@@ -206,6 +212,7 @@ export class ImportService {
       diff: { inserted, skipped, total: valid.length, relResolved }, ip,
     });
 
+    await this.cache.del('analytics:summary');
     return { inserted, skipped, total: valid.length, relResolved };
   }
 }
