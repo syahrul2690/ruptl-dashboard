@@ -1,4 +1,4 @@
-import { useState, CSSProperties } from 'react';
+import { useState, useRef, useEffect, CSSProperties } from 'react';
 import { Project, ProjectSlim, STATUS_CONFIG, ProjectStatus, ProjectType, URGENCY_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -89,27 +89,115 @@ const ISSUE_OPTIONS = [
   { value: 'Force Majeure',            label: 'Force Majeure'          },
 ];
 
+// ── Mini project picker (client-side filter from slimProjects) ───────────────
+function ProjectPicker({ slimProjects, value, onChange, multi = false, excludeIds = [], placeholder }: {
+  slimProjects: ProjectSlim[];
+  value: string | string[];
+  onChange: (v: string | string[]) => void;
+  multi?: boolean;
+  excludeIds?: string[];
+  placeholder?: string;
+}) {
+  const [query, setQuery] = useState('');
+  const [open,  setOpen]  = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selectedIds: string[] = multi ? (value as string[]) : (value ? [value as string] : []);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const results = query.trim().length >= 1
+    ? slimProjects
+        .filter(p => !excludeIds.includes(p.id) && !selectedIds.includes(p.id))
+        .filter(p => p.name.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 8)
+    : [];
+
+  const select = (p: ProjectSlim) => {
+    if (multi) {
+      onChange([...selectedIds, p.id]);
+    } else {
+      onChange(p.id);
+      setOpen(false);
+      setQuery('');
+    }
+  };
+  const remove = (id: string) => {
+    if (multi) onChange(selectedIds.filter(x => x !== id));
+    else onChange('');
+  };
+  const nameOf = (id: string) => slimProjects.find(p => p.id === id)?.name ?? id.slice(0, 8) + '…';
+
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      {selectedIds.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:5 }}>
+          {selectedIds.map(id => (
+            <span key={id} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', borderRadius:4, fontSize:10, fontWeight:500, background:'rgba(14,145,165,0.1)', color:'#0E91A5', border:'1px solid rgba(14,145,165,0.3)' }}>
+              {nameOf(id)}
+              <button type="button" onClick={() => remove(id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#0E91A5', padding:0, fontSize:12, lineHeight:1 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {(multi || selectedIds.length === 0) && (
+        <input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder ?? 'Cari proyek…'}
+          style={{ width:'100%', background:'#0D1526', border:'1px solid #374151', borderRadius:5,
+            color:'#E5E7EB', fontSize:12, padding:'7px 10px', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}
+        />
+      )}
+      {open && results.length > 0 && (
+        <div style={{ position:'absolute', top:'calc(100% + 2px)', left:0, right:0, zIndex:8000,
+          background:'#111827', border:'1px solid #374151', borderRadius:6,
+          boxShadow:'0 8px 24px rgba(0,0,0,0.6)', maxHeight:200, overflowY:'auto' }}>
+          {results.map(p => (
+            <div key={p.id} onClick={() => select(p)} style={{ padding:'8px 10px', cursor:'pointer', borderBottom:'1px solid #1F2937', fontSize:11 }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1F2937')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <div style={{ color:'#E5E7EB', fontWeight:500 }}>{p.name}</div>
+              <div style={{ color:'#4B5563', fontSize:10 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Inline edit form ──────────────────────────────────────────────────────────
 interface EditFormProps {
-  project:    Project;
-  onSaved:    (p: Project) => void;
-  onCancel:   () => void;
-  isAdmin:    boolean;
+  project:      Project;
+  slimProjects: ProjectSlim[];
+  onSaved:      (p: Project) => void;
+  onCancel:     () => void;
+  isAdmin:      boolean;
 }
-function EditForm({ project, onSaved, onCancel, isAdmin }: EditFormProps) {
-  const [status,     setStatus]     = useState<string>(project.status);
-  const [issueType,  setIssueType]  = useState(project.issueType ?? 'None');
-  const [plan,       setPlan]       = useState(String(project.progressPlan      ?? 0));
-  const [real,       setReal]       = useState(String(project.progressRealisasi ?? 0));
-  const [cod,        setCod]        = useState(project.codTargetRUPTL   ?? '');
-  const [codK,       setCodK]       = useState(project.codKontraktual   ?? '');
-  const [codE,       setCodE]       = useState(project.codEstimasi      ?? '');
-  const [detail,     setDetail]     = useState(project.detail           ?? '');
-  const [urgency,    setUrgency]    = useState<string[]>(project.urgencyCategory ?? []);
-  const [lat,        setLat]        = useState(project.lat != null ? String(project.lat) : '');
-  const [lng,        setLng]        = useState(project.lng != null ? String(project.lng) : '');
-  const [saving,     setSaving]     = useState(false);
-  const [err,        setErr]        = useState<string|null>(null);
+function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFormProps) {
+  const [status,          setStatus]         = useState<string>(project.status);
+  const [issueType,       setIssueType]      = useState(project.issueType ?? 'None');
+  const [plan,            setPlan]           = useState(String(project.progressPlan      ?? 0));
+  const [real,            setReal]           = useState(String(project.progressRealisasi ?? 0));
+  const [cod,             setCod]            = useState(project.codTargetRUPTL   ?? '');
+  const [codK,            setCodK]           = useState(project.codKontraktual   ?? '');
+  const [codE,            setCodE]           = useState(project.codEstimasi      ?? '');
+  const [detail,          setDetail]         = useState(project.detail           ?? '');
+  const [urgency,         setUrgency]        = useState<string[]>(project.urgencyCategory ?? []);
+  const [lat,             setLat]            = useState(project.lat != null ? String(project.lat) : '');
+  const [lng,             setLng]            = useState(project.lng != null ? String(project.lng) : '');
+  const [lineFromId,      setLineFromId]     = useState<string>(project.lineFromId ?? '');
+  const [lineToId,        setLineToId]       = useState<string>(project.lineToId   ?? '');
+  const [relatedProjects, setRelatedProjects]= useState<string[]>(project.relatedProjects ?? []);
+  const [saving,          setSaving]         = useState(false);
+  const [err,             setErr]            = useState<string|null>(null);
 
   const planN = parseInt(plan)  || 0;
   const realN = parseInt(real)  || 0;
@@ -136,6 +224,11 @@ function EditForm({ project, onSaved, onCancel, isAdmin }: EditFormProps) {
         payload.lat = parseFloat(lat) || null;
         payload.lng = parseFloat(lng) || null;
       }
+      if (project.type === 'TRANSMISSION_LINE') {
+        payload.lineFromId = lineFromId || null;
+        payload.lineToId   = lineToId   || null;
+      }
+      payload.relatedProjects = relatedProjects;
       const res = await projectsApi.update(project.id, payload);
       onSaved(res.data);
     } catch (e: any) {
@@ -194,6 +287,45 @@ function EditForm({ project, onSaved, onCancel, isAdmin }: EditFormProps) {
       <div>
         <ELabel>COD Estimasi</ELabel>
         <EInput value={codE} onChange={setCodE} placeholder="e.g. 2026-Q1" />
+      </div>
+
+      {/* Line connections — transmission line only */}
+      {project.type === 'TRANSMISSION_LINE' && (
+        <>
+          <div>
+            <ELabel>Dari (Gardu / Pembangkit Asal)</ELabel>
+            <ProjectPicker
+              slimProjects={slimProjects}
+              value={lineFromId}
+              onChange={v => setLineFromId(v as string)}
+              excludeIds={lineToId ? [lineToId] : []}
+              placeholder="Cari gardu / PLTU asal…"
+            />
+          </div>
+          <div>
+            <ELabel>Ke (Gardu / Pembangkit Tujuan)</ELabel>
+            <ProjectPicker
+              slimProjects={slimProjects}
+              value={lineToId}
+              onChange={v => setLineToId(v as string)}
+              excludeIds={lineFromId ? [lineFromId] : []}
+              placeholder="Cari gardu / PLTU tujuan…"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Related projects */}
+      <div>
+        <ELabel>Proyek Terkait / Rantai Evakuasi</ELabel>
+        <ProjectPicker
+          slimProjects={slimProjects}
+          value={relatedProjects}
+          onChange={v => setRelatedProjects(v as string[])}
+          multi
+          excludeIds={[project.id]}
+          placeholder="Cari proyek terkait…"
+        />
       </div>
 
       {/* Lat / Lng — admin only, not shown for transmission lines */}
@@ -508,6 +640,7 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
       {mode === 'edit' && (
         <EditForm
           project={project}
+          slimProjects={slimProjects}
           onSaved={handleSaved}
           onCancel={() => setMode('view')}
           isAdmin={user?.role === 'ADMIN'}

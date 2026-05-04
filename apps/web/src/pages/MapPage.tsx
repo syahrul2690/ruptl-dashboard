@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ProjectSlim, Project, ProjectStatus, STATUS_CONFIG } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import FilterBar, { ProjectCounts } from '../components/FilterBar';
@@ -15,6 +15,8 @@ export default function MapPage() {
   const [activeFilters,   setActiveFilters]   = useState<string[]>([]);
   const [activeProvinces, setActiveProvinces] = useState<string[]>([]);
   const [activeStatuses,  setActiveStatuses]  = useState<ProjectStatus[]>([]);
+  const [searchQuery,     setSearchQuery]     = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
 
   // Fetch slim project list on mount
   useEffect(() => {
@@ -46,7 +48,16 @@ export default function MapPage() {
     setSelectedProject(updated);
     setProjects(prev => prev.map(p =>
       p.id === updated.id
-        ? { ...p, status: updated.status, issueType: updated.issueType, urgencyCategory: updated.urgencyCategory }
+        ? {
+            ...p,
+            status:          updated.status,
+            issueType:       updated.issueType,
+            urgencyCategory: updated.urgencyCategory,
+            lat:             updated.lat,
+            lng:             updated.lng,
+            lineFromId:      updated.lineFromId,
+            lineToId:        updated.lineToId,
+          }
         : p
     ));
   }, []);
@@ -82,6 +93,19 @@ export default function MapPage() {
 
   // Sync counts to NavBar via context
   useEffect(() => { setCounts(projectCounts); }, [projectCounts, setCounts]);
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return projects.filter(p =>
+      p.name.toLowerCase().includes(q) || p.province?.toLowerCase().includes(q)
+    ).slice(0, 10);
+  }, [searchQuery, projects]);
+
+  const handleSearchSelect = useCallback(async (slim: ProjectSlim) => {
+    setSearchQuery('');
+    await handleSelectProject(slim);
+  }, [handleSelectProject]);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', minHeight:0 }}>
@@ -120,8 +144,66 @@ export default function MapPage() {
           />
         </div>
 
-        {/* Right panel: detail */}
+        {/* Right panel: search + detail */}
         <div style={{ width:400, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#111827' }}>
+
+          {/* ── Search bar ── */}
+          <div ref={searchRef} style={{ padding:'10px 12px', borderBottom:'1px solid #1F2937', flexShrink:0, position:'relative' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Escape' && setSearchQuery('')}
+              placeholder="Cari nama proyek atau provinsi…"
+              style={{
+                width:'100%', boxSizing:'border-box',
+                background:'#0D1526', border:'1px solid #374151', borderRadius:6,
+                padding:'7px 32px 7px 10px', fontSize:12, color:'#E5E7EB',
+                fontFamily:'inherit', outline:'none',
+              }}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} style={{
+                position:'absolute', right:20, top:'50%', transform:'translateY(-50%)',
+                background:'none', border:'none', color:'#6B7280', cursor:'pointer', fontSize:16, lineHeight:1, padding:2,
+              }}>×</button>
+            )}
+
+            {/* Results dropdown */}
+            {searchResults.length > 0 && (
+              <div style={{
+                position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
+                background:'#111827', border:'1px solid #374151', borderRadius:6,
+                boxShadow:'0 8px 24px rgba(0,0,0,0.6)', maxHeight:320, overflowY:'auto',
+              }}>
+                {searchResults.map(p => {
+                  const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+                  return (
+                    <div key={p.id} onClick={() => handleSearchSelect(p)} style={{
+                      padding:'9px 12px', cursor:'pointer', borderBottom:'1px solid #1F2937',
+                      display:'flex', alignItems:'center', gap:10,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#1F2937')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      <span style={{ width:8, height:8, borderRadius:'50%', background:cfg.color, flexShrink:0 }} />
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:12, fontWeight:500, color:'#E5E7EB', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                        <div style={{ fontSize:10, color:'#4B5563', marginTop:1 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+              <div style={{
+                position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
+                background:'#111827', border:'1px solid #374151', borderRadius:6,
+                padding:'12px', fontSize:12, color:'#4B5563', textAlign:'center',
+              }}>Tidak ada proyek ditemukan</div>
+            )}
+          </div>
 
           {/* ── Detail panel ── */}
           <DetailPanel

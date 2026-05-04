@@ -1,4 +1,4 @@
-import { useEffect, useState, CSSProperties } from 'react';
+import { useEffect, useState, CSSProperties, useCallback } from 'react';
 import { analyticsApi } from '../lib/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -59,19 +59,23 @@ function DonutChart({ data, colors, size = 130, hole = 0.62 }: {
 }
 
 // ── Horizontal Bar ────────────────────────────────────────────────────────────
-function HBar({ rows, color, unit, emptyText = 'Tidak ada data' }: {
+function HBar({ rows, color, unit, emptyText = 'Tidak ada data', initialLimit = 8 }: {
   rows: { label: string; value: number }[];
   color: string;
   unit: string;
   emptyText?: string;
+  initialLimit?: number;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (!rows.length) {
     return <div style={{ fontSize:12, color:'#374151', padding:'20px 0', textAlign:'center' }}>{emptyText}</div>;
   }
+  const visible = expanded ? rows : rows.slice(0, initialLimit);
   const max = Math.max(...rows.map(r => r.value), 1);
+  const hasMore = rows.length > initialLimit;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-      {rows.map((row, i) => (
+      {visible.map((row, i) => (
         <div key={i}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
             <span style={{ fontSize:11, color:'#9CA3AF', maxWidth:'60%', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{row.label}</span>
@@ -84,6 +88,14 @@ function HBar({ rows, color, unit, emptyText = 'Tidak ada data' }: {
           </div>
         </div>
       ))}
+      {hasMore && (
+        <button onClick={() => setExpanded(e => !e)} style={{
+          marginTop:4, padding:'5px 0', background:'none', border:'none', cursor:'pointer',
+          fontSize:11, color:'#4B5563', fontFamily:'inherit', textAlign:'left',
+        }}>
+          {expanded ? '▲ Sembunyikan' : `▼ Lihat semua (${rows.length - initialLimit} lainnya)`}
+        </button>
+      )}
     </div>
   );
 }
@@ -189,11 +201,9 @@ export default function AnalyticsPage() {
   ];
 
   const islandRows      = byIsland.sort((a, b) => b.count - a.count).map(i => ({ label: i.island,    value: i.count }));
-  const provinceRows    = byProvince.slice(0, 8).map(p => ({ label: p.province,  value: p.count }));
-
-  // Per-province capacity rows (top 8)
-  const mwProvinceRows  = mwByProvince.slice(0, 8).map(r => ({ label: r.province,  value: r.value }));
-  const kmProvinceRows  = kmByProvince.slice(0, 8).map(r => ({ label: r.province,  value: r.value }));
+  const provinceRows    = byProvince.map(p => ({ label: p.province,  value: p.count }));
+  const mwProvinceRows  = mwByProvince.map(r => ({ label: r.province,  value: r.value }));
+  const kmProvinceRows  = kmByProvince.map(r => ({ label: r.province,  value: r.value }));
 
   // Per-grid rows
   const mwGridRows      = mwByGrid.map(r  => ({ label: r.gridSystem, value: r.value }));
@@ -252,7 +262,7 @@ export default function AnalyticsPage() {
         <ChartCard title="Proyek per Pulau" subtitle="Jumlah proyek">
           <HBar rows={islandRows} color="#0E91A5" unit="proyek" />
         </ChartCard>
-        <ChartCard title="Proyek per Provinsi (Top 8)" subtitle="Jumlah proyek">
+        <ChartCard title="Proyek per Provinsi" subtitle="Jumlah proyek">
           <HBar rows={provinceRows} color="#3B82F6" unit="proyek" />
         </ChartCard>
       </div>
@@ -260,11 +270,11 @@ export default function AnalyticsPage() {
       {/* ── Capacity / length per province ── */}
       <SectionHeader title="Distribusi per Provinsi" />
       <div style={a.biRow}>
-        <ChartCard title="Kapasitas Pembangkit per Provinsi" subtitle="Total MW · Power Plant (Top 8)">
+        <ChartCard title="Kapasitas Pembangkit per Provinsi" subtitle="Total MW · Power Plant">
           <HBar rows={mwProvinceRows} color="#10B981" unit="MW"
             emptyText="Belum ada data kapasitas pembangkit" />
         </ChartCard>
-        <ChartCard title="Panjang Transmisi per Provinsi" subtitle="Total km · Transmission Line (Top 8)">
+        <ChartCard title="Panjang Transmisi per Provinsi" subtitle="Total km · Transmission Line">
           <HBar rows={kmProvinceRows} color="#3B82F6" unit="km"
             emptyText="Belum ada data panjang transmisi" />
         </ChartCard>
