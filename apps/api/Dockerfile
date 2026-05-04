@@ -33,7 +33,7 @@ COPY --from=builder /app/apps/api/dist    ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma  ./apps/api/prisma
 
 WORKDIR /app/apps/api
-RUN npx prisma@5.22.0 generate
+RUN npx prisma generate
 
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma@5.22.0 migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
