@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Inject } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
@@ -65,21 +65,35 @@ export class ProjectsService {
   }
 
   async create(dto: CreateProjectDto, userId: string, userEmail: string, ip?: string) {
-    const project = await this.prisma.project.create({ data: { ...dto, createdById: userId } });
-    await this.audit.log({ userId, userEmail, action: 'CREATE', entity: 'Project', entityId: project.id, ip });
-    await this.invalidateAnalytics();
-    return project;
+    try {
+      const project = await this.prisma.project.create({ data: { ...dto, createdById: userId } });
+      await this.audit.log({ userId, userEmail, action: 'CREATE', entity: 'Project', entityId: project.id, ip });
+      await this.invalidateAnalytics();
+      return project;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException(`RUPTL Code "${dto.ruptlCode}" sudah digunakan oleh proyek lain`);
+      }
+      throw e;
+    }
   }
 
   async update(id: string, dto: UpdateProjectDto, userId: string, userEmail: string, ip?: string) {
     await this.findOne(id);
-    const project = await this.prisma.project.update({
-      where: { id },
-      data:  { ...dto, updatedById: userId },
-    });
-    await this.audit.log({ userId, userEmail, action: 'UPDATE', entity: 'Project', entityId: id, diff: dto as object, ip });
-    await this.invalidateAnalytics();
-    return project;
+    try {
+      const project = await this.prisma.project.update({
+        where: { id },
+        data:  { ...dto, updatedById: userId },
+      });
+      await this.audit.log({ userId, userEmail, action: 'UPDATE', entity: 'Project', entityId: id, diff: dto as object, ip });
+      await this.invalidateAnalytics();
+      return project;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException(`RUPTL Code "${(dto as any).ruptlCode}" sudah digunakan oleh proyek lain`);
+      }
+      throw e;
+    }
   }
 
   async remove(id: string, userId: string, userEmail: string, ip?: string) {
