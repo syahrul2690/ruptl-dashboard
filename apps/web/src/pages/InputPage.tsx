@@ -343,14 +343,37 @@ function ManualForm() {
             Latitude & Longitude tidak diperlukan untuk Transmission Line — posisi pada peta diturunkan dari titik asal dan tujuan (<code style={{ fontFamily: 'monospace', color: '#8B5CF6' }}>lineFromId</code> / <code style={{ fontFamily: 'monospace', color: '#8B5CF6' }}>lineToId</code>).
           </div>
         ) : (
-          <>
-            <Field label="Latitude *">
-              <Input type="number" step="0.0001" value={form.lat} onChange={set('lat')} placeholder="-7.2575" />
+          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field label="Latitude *" hint="atau paste koordinat Google Maps di sini">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={form.lat}
+                placeholder="-7.2575"
+                style={s.input}
+                onChange={e => setForm(f => ({ ...f, lat: e.target.value }))}
+                onPaste={e => {
+                  const text = e.clipboardData.getData('text').trim();
+                  // Google Maps copies as "lat, lng" — detect and split
+                  const match = text.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+                  if (match) {
+                    e.preventDefault();
+                    setForm(f => ({ ...f, lat: match[1], lng: match[2] }));
+                  }
+                }}
+              />
             </Field>
             <Field label="Longitude *">
-              <Input type="number" step="0.0001" value={form.lng} onChange={set('lng')} placeholder="112.7521" />
+              <input
+                type="text"
+                inputMode="decimal"
+                value={form.lng}
+                placeholder="112.7521"
+                style={s.input}
+                onChange={e => setForm(f => ({ ...f, lng: e.target.value }))}
+              />
             </Field>
-          </>
+          </div>
         )}
       </div>
 
