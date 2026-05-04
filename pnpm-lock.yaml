@@ -134,6 +134,9 @@ importers:
       react-router-dom:
         specifier: ^6.23.1
         version: 6.30.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
     devDependencies:
       '@types/leaflet':
         specifier: ^1.9.12

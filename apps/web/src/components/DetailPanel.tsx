@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, CSSProperties } from 'react';
+import * as XLSX from 'xlsx';
 import { Project, ProjectSlim, STATUS_CONFIG, ProjectStatus, ProjectType, URGENCY_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -75,11 +76,62 @@ function SCurveChart({ rows }: { rows: ProgressRow[] }) {
   );
 }
 
+// ── Excel helpers ─────────────────────────────────────────────────────────────
+function downloadTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Month (YYYY-MM)', 'Plan Increment (%)', 'Actual Increment (%)'],
+    ['2024-01', 5, 4.5],
+    ['2024-02', 5, 5],
+    ['2024-03', 5, ''],
+  ]);
+  ws['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 24 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'S-Curve');
+  XLSX.writeFile(wb, 'scurve_template.xlsx');
+}
+
+function exportToExcel(rows: ProgressRow[], projectName: string) {
+  // Convert cumulative → incremental so file can be re-imported
+  const aoa: any[][] = [['Month (YYYY-MM)', 'Plan Increment (%)', 'Actual Increment (%)']];
+  let prevPlan = 0, prevActual = 0;
+  for (const r of rows) {
+    const planInc = parseFloat((r.plan - prevPlan).toFixed(4));
+    const actInc  = r.actual != null ? parseFloat((r.actual - prevActual).toFixed(4)) : '';
+    aoa.push([r.yearMonth, planInc, actInc]);
+    prevPlan = r.plan;
+    if (r.actual != null) prevActual = r.actual;
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 24 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'S-Curve');
+  const safe = projectName.replace(/[^a-zA-Z0-9_\- ]/g, '').slice(0, 30);
+  XLSX.writeFile(wb, `scurve_${safe}.xlsx`);
+}
+
+function parseSheetRows(rows: any[][]): ProgressRow[] {
+  const data: ProgressRow[] = [];
+  let cumPlan = 0, cumActual = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
+    const ym    = String(cols[0] ?? '').trim();
+    const planD = parseFloat(String(cols[1] ?? '0')) || 0;
+    const actRaw = String(cols[2] ?? '').trim();
+    const actD  = actRaw === '' ? NaN : parseFloat(actRaw);
+    if (!ym || !/^\d{4}-\d{2}$/.test(ym)) continue;
+    cumPlan   = Math.min(100, cumPlan + planD);
+    if (!isNaN(actD)) cumActual = Math.min(100, cumActual + actD);
+    data.push({ yearMonth: ym, plan: parseFloat(cumPlan.toFixed(4)), actual: isNaN(actD) ? null : parseFloat(cumActual.toFixed(4)) });
+  }
+  return data;
+}
+
 // ── S-Curve Editor ────────────────────────────────────────────────────────────
-function SCurveEditor({ projectId, initialRows, onClose }: {
-  projectId: string;
+function SCurveEditor({ projectId, projectName, initialRows, onClose }: {
+  projectId:   string;
+  projectName: string;
   initialRows: ProgressRow[];
-  onClose: (saved: ProgressRow[]) => void;
+  onClose:     (saved: ProgressRow[]) => void;
 }) {
   const [rows,    setRows]    = useState<ProgressRow[]>(initialRows.map(r => ({ ...r })));
   const [saving,  setSaving]  = useState(false);
@@ -103,33 +155,32 @@ function SCurveEditor({ projectId, initialRows, onClose }: {
     ));
   };
 
-  // CSV import — expects: Month(YYYY-MM), PlanIncrement, ActualIncrement
-  const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isXlsx = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        const text = ev.target?.result as string;
-        const lines = text.trim().split('\n').filter(l => l.trim());
-        const data: ProgressRow[] = [];
-        let cumPlan = 0, cumActual = 0;
-        for (let i = 1; i < lines.length; i++) {         // skip header row
-          const cols = lines[i].split(/[,;]/).map(c => c.trim().replace(/"/g, ''));
-          const ym    = cols[0]?.trim();
-          const planD = parseFloat(cols[1] ?? '0') || 0;
-          const actD  = parseFloat(cols[2] ?? '') ;
-          if (!ym || !/^\d{4}-\d{2}$/.test(ym)) continue;
-          cumPlan   = Math.min(100, cumPlan + planD);
-          if (!isNaN(actD)) cumActual = Math.min(100, cumActual + actD);
-          data.push({ yearMonth: ym, plan: parseFloat(cumPlan.toFixed(4)), actual: isNaN(actD) ? null : parseFloat(cumActual.toFixed(4)) });
+        let data: ProgressRow[] = [];
+        if (isXlsx) {
+          const wb = XLSX.read(ev.target?.result, { type: 'binary' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const aoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+          data = parseSheetRows(aoa);
+        } else {
+          const text = ev.target?.result as string;
+          const lines = text.trim().split('\n').filter(l => l.trim());
+          const aoa = lines.map(l => l.split(/[,;]/).map(c => c.trim().replace(/"/g, '')));
+          data = parseSheetRows(aoa);
         }
         if (!data.length) { setErr('Tidak ada data valid dalam file'); return; }
         setRows(data.sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)));
         setErr(null);
       } catch { setErr('Gagal membaca file'); }
     };
-    reader.readAsText(file);
+    if (isXlsx) reader.readAsBinaryString(file);
+    else reader.readAsText(file);
     e.target.value = '';
   };
 
@@ -152,12 +203,16 @@ function SCurveEditor({ projectId, initialRows, onClose }: {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       {/* Toolbar */}
-      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+      <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
         <button type="button" onClick={addRow} style={eb.btnSm}>+ Bulan</button>
-        <button type="button" onClick={() => fileRef.current?.click()} style={eb.btnSm}>📥 Import CSV</button>
-        <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display:'none' }} onChange={handleCSV} />
-        <span style={{ fontSize:10, color:'#374151', flex:1, textAlign:'right' }}>
-          Format CSV: YearMonth (YYYY-MM) | Plan% | Actual%
+        <button type="button" onClick={() => fileRef.current?.click()} style={eb.btnSm}>📥 Import</button>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.txt" style={{ display:'none' }} onChange={handleImport} />
+        <button type="button" onClick={downloadTemplate} style={eb.btnSm}>📋 Template</button>
+        {rows.length > 0 && (
+          <button type="button" onClick={() => exportToExcel(rows, projectName)} style={eb.btnSm}>⬆ Export</button>
+        )}
+        <span style={{ fontSize:10, color:'#374151', flex:1, textAlign:'right', minWidth:60 }}>
+          .xlsx / .csv
         </span>
       </div>
 
@@ -173,7 +228,7 @@ function SCurveEditor({ projectId, initialRows, onClose }: {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={4} style={{ padding:'14px 8px', textAlign:'center', color:'#374151', fontSize:11 }}>Belum ada data — tambah bulan atau import CSV</td></tr>
+              <tr><td colSpan={4} style={{ padding:'14px 8px', textAlign:'center', color:'#374151', fontSize:11 }}>Belum ada data — tambah bulan, download template, atau import file</td></tr>
             )}
             {rows.map(r => (
               <tr key={r.yearMonth} style={{ borderBottom:'1px solid #1F2937' }}>
@@ -414,7 +469,7 @@ function SCurveSection({ projectId }: { projectId: string }) {
 }
 
 // ── S-Curve editor section (self-fetches, used inside EditForm) ───────────────
-function SCurveEditorSection({ projectId }: { projectId: string }) {
+function SCurveEditorSection({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [rows,    setRows]    = useState<ProgressRow[] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -430,6 +485,7 @@ function SCurveEditorSection({ projectId }: { projectId: string }) {
   return (
     <SCurveEditor
       projectId={projectId}
+      projectName={projectName}
       initialRows={rows ?? []}
       onClose={saved => setRows(saved)}
     />
@@ -662,7 +718,7 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
       {/* S-Curve */}
       <div style={{ borderTop:'1px solid #1F2937', paddingTop:12 }}>
         <ELabel>S-Curve Progress</ELabel>
-        <SCurveEditorSection projectId={project.id} />
+        <SCurveEditorSection projectId={project.id} projectName={project.name} />
       </div>
 
       {err && <div style={{ fontSize:12, color:'#EF4444', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:5, padding:'8px 10px' }}>{err}</div>}
