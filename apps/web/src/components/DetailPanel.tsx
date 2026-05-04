@@ -94,8 +94,9 @@ interface EditFormProps {
   project:    Project;
   onSaved:    (p: Project) => void;
   onCancel:   () => void;
+  isAdmin:    boolean;
 }
-function EditForm({ project, onSaved, onCancel }: EditFormProps) {
+function EditForm({ project, onSaved, onCancel, isAdmin }: EditFormProps) {
   const [status,     setStatus]     = useState<string>(project.status);
   const [issueType,  setIssueType]  = useState(project.issueType ?? 'None');
   const [plan,       setPlan]       = useState(String(project.progressPlan      ?? 0));
@@ -105,6 +106,8 @@ function EditForm({ project, onSaved, onCancel }: EditFormProps) {
   const [codE,       setCodE]       = useState(project.codEstimasi      ?? '');
   const [detail,     setDetail]     = useState(project.detail           ?? '');
   const [urgency,    setUrgency]    = useState<string[]>(project.urgencyCategory ?? []);
+  const [lat,        setLat]        = useState(project.lat != null ? String(project.lat) : '');
+  const [lng,        setLng]        = useState(project.lng != null ? String(project.lng) : '');
   const [saving,     setSaving]     = useState(false);
   const [err,        setErr]        = useState<string|null>(null);
 
@@ -118,7 +121,7 @@ function EditForm({ project, onSaved, onCancel }: EditFormProps) {
   const handleSave = async () => {
     setSaving(true); setErr(null);
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         status, issueType,
         progressPlan:      planN,
         progressRealisasi: realN,
@@ -129,6 +132,10 @@ function EditForm({ project, onSaved, onCancel }: EditFormProps) {
         detail:            detail || null,
         urgencyCategory:   urgency,
       };
+      if (isAdmin && project.type !== 'TRANSMISSION_LINE') {
+        payload.lat = parseFloat(lat) || null;
+        payload.lng = parseFloat(lng) || null;
+      }
       const res = await projectsApi.update(project.id, payload);
       onSaved(res.data);
     } catch (e: any) {
@@ -188,6 +195,49 @@ function EditForm({ project, onSaved, onCancel }: EditFormProps) {
         <ELabel>COD Estimasi</ELabel>
         <EInput value={codE} onChange={setCodE} placeholder="e.g. 2026-Q1" />
       </div>
+
+      {/* Lat / Lng — admin only, not shown for transmission lines */}
+      {isAdmin && project.type !== 'TRANSMISSION_LINE' && (
+        <div>
+          <ELabel>Koordinat (Latitude, Longitude)</ELabel>
+          <div style={{ fontSize:10, color:'#4B5563', marginBottom:6 }}>
+            Paste dari Google Maps langsung ke kolom Latitude
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={lat}
+              placeholder="-7.2575"
+              onChange={e => setLat(e.target.value)}
+              onPaste={e => {
+                const text = e.clipboardData.getData('text').trim();
+                const match = text.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+                if (match) {
+                  e.preventDefault();
+                  setLat(match[1]);
+                  setLng(match[2]);
+                }
+              }}
+              style={{ width:'100%', background:'#0D1526', border:'1px solid #374151', borderRadius:5,
+                color:'#E5E7EB', fontSize:12, padding:'7px 10px', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={lng}
+              placeholder="112.7521"
+              onChange={e => setLng(e.target.value)}
+              style={{ width:'100%', background:'#0D1526', border:'1px solid #374151', borderRadius:5,
+                color:'#E5E7EB', fontSize:12, padding:'7px 10px', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}
+            />
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+            <span style={{ fontSize:10, color:'#4B5563' }}>Latitude</span>
+            <span style={{ fontSize:10, color:'#4B5563' }}>Longitude</span>
+          </div>
+        </div>
+      )}
 
       {/* Urgency */}
       <div>
@@ -460,6 +510,7 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
           project={project}
           onSaved={handleSaved}
           onCancel={() => setMode('view')}
+          isAdmin={user?.role === 'ADMIN'}
         />
       )}
     </div>
