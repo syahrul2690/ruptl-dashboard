@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ListProjectsDto } from './dto/list-projects.dto';
+import { ProgressRowDto } from './dto/upsert-progress.dto';
 
 const SLIM_SELECT = {
   id: true, lat: true, lng: true, status: true,
@@ -94,6 +95,32 @@ export class ProjectsService {
       }
       throw e;
     }
+  }
+
+  async getProgress(id: string) {
+    await this.findOne(id);
+    return this.prisma.projectProgress.findMany({
+      where: { projectId: id },
+      orderBy: { yearMonth: 'asc' },
+    });
+  }
+
+  async upsertProgress(id: string, rows: ProgressRowDto[]) {
+    await this.findOne(id);
+    await this.prisma.$transaction([
+      this.prisma.projectProgress.deleteMany({ where: { projectId: id } }),
+      ...(rows.length
+        ? [this.prisma.projectProgress.createMany({
+            data: rows.map(r => ({
+              projectId: id,
+              yearMonth: r.yearMonth,
+              plan:      r.plan,
+              actual:    r.actual ?? null,
+            })),
+          })]
+        : []),
+    ]);
+    return this.getProgress(id);
   }
 
   async remove(id: string, userId: string, userEmail: string, ip?: string) {

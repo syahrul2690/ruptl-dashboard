@@ -271,8 +271,8 @@ function ManualForm() {
       showToast('Lengkapi field wajib: Nama, RUPTL Code, Tipe, Status, Provinsi', 'error');
       return;
     }
-    const plan   = parseInt(form.progressPlan)      || 0;
-    const actual = parseInt(form.progressRealisasi) || 0;
+    const plan   = parseFloat(form.progressPlan)      || 0;
+    const actual = parseFloat(form.progressRealisasi) || 0;
     setSaving(true);
     try {
       await projectsApi.create({
@@ -440,8 +440,8 @@ function ManualForm() {
         </Field>
       </Row>
       <div style={{ fontSize: 11, color: '#4B5563' }}>
-        Deviasi: <span style={{ fontWeight: 700, color: (parseInt(form.progressRealisasi) - parseInt(form.progressPlan)) >= 0 ? '#10B981' : '#EF4444' }}>
-          {(parseInt(form.progressRealisasi) || 0) - (parseInt(form.progressPlan) || 0)}%
+        Deviasi: <span style={{ fontWeight: 700, color: (parseFloat(form.progressRealisasi) - parseFloat(form.progressPlan)) >= 0 ? '#10B981' : '#EF4444' }}>
+          {parseFloat(((parseFloat(form.progressRealisasi) || 0) - (parseFloat(form.progressPlan) || 0)).toFixed(4))}%
         </span> (otomatis dihitung)
       </div>
 

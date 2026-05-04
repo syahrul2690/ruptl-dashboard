@@ -1,7 +1,220 @@
-import { useState, useRef, useEffect, CSSProperties } from 'react';
+import { useState, useRef, useEffect, useCallback, CSSProperties } from 'react';
 import { Project, ProjectSlim, STATUS_CONFIG, ProjectStatus, ProjectType, URGENCY_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+
+// ── S-Curve types ─────────────────────────────────────────────────────────────
+interface ProgressRow { yearMonth: string; plan: number; actual: number | null; }
+
+// ── S-Curve Chart (compact SVG) ───────────────────────────────────────────────
+function SCurveChart({ rows }: { rows: ProgressRow[] }) {
+  if (!rows.length) return (
+    <div style={{ fontSize:11, color:'#374151', textAlign:'center', padding:'20px 0' }}>Belum ada data S-Curve</div>
+  );
+
+  const W = 344, H = 170;
+  const PAD = { top: 16, right: 12, bottom: 32, left: 32 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const n  = rows.length;
+
+  const xPos = (i: number) => PAD.left + (n < 2 ? cW / 2 : (i / (n - 1)) * cW);
+  const yPos = (v: number) => PAD.top + cH - (Math.min(Math.max(v, 0), 100) / 100) * cH;
+
+  const planPts   = rows.map((r, i) => `${xPos(i)},${yPos(r.plan)}`).join(' ');
+  const actualRows = rows.filter(r => r.actual != null);
+  const actualPts  = actualRows.map(r => `${xPos(rows.indexOf(r))},${yPos(r.actual!)}`).join(' ');
+
+  const MONTH_ABBR = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const labelStep  = Math.max(1, Math.ceil(n / 7));
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:'block', overflow:'visible' }}>
+      {/* Y grid + labels */}
+      {[0, 25, 50, 75, 100].map(v => (
+        <g key={v}>
+          <line x1={PAD.left} y1={yPos(v)} x2={W - PAD.right} y2={yPos(v)}
+            stroke={v === 0 ? '#374151' : '#1F2937'} strokeWidth={v === 0 ? 1 : 0.5} strokeDasharray={v === 0 ? undefined : '2,3'} />
+          <text x={PAD.left - 4} y={yPos(v) + 3.5} textAnchor="end" fontSize={8} fill="#4B5563">{v}</text>
+        </g>
+      ))}
+
+      {/* Plan line */}
+      {n > 1 && <polyline points={planPts} fill="none" stroke="#3B82F6" strokeWidth={1.5} strokeLinejoin="round" />}
+
+      {/* Actual line */}
+      {actualRows.length > 1 && <polyline points={actualPts} fill="none" stroke="#10B981" strokeWidth={1.5} strokeLinejoin="round" />}
+
+      {/* Dots */}
+      {rows.map((r, i) => (
+        <g key={r.yearMonth}>
+          <circle cx={xPos(i)} cy={yPos(r.plan)} r={2.5} fill="#3B82F6" />
+          {r.actual != null && <circle cx={xPos(i)} cy={yPos(r.actual)} r={2.5} fill="#10B981" />}
+        </g>
+      ))}
+
+      {/* X labels */}
+      {rows.map((r, i) => {
+        if (i % labelStep !== 0 && i !== n - 1) return null;
+        const [y, m] = r.yearMonth.split('-');
+        return (
+          <text key={r.yearMonth} x={xPos(i)} y={H - 4} textAnchor="middle" fontSize={8} fill="#4B5563">
+            {MONTH_ABBR[parseInt(m) - 1]}'{y.slice(2)}
+          </text>
+        );
+      })}
+
+      {/* Legend */}
+      <g>
+        <rect x={PAD.left} y={3} width={7} height={7} rx={1} fill="#3B82F6" />
+        <text x={PAD.left + 10} y={10} fontSize={8} fill="#9CA3AF">Plan</text>
+        <rect x={PAD.left + 40} y={3} width={7} height={7} rx={1} fill="#10B981" />
+        <text x={PAD.left + 51} y={10} fontSize={8} fill="#9CA3AF">Aktual</text>
+      </g>
+    </svg>
+  );
+}
+
+// ── S-Curve Editor ────────────────────────────────────────────────────────────
+function SCurveEditor({ projectId, initialRows, onClose }: {
+  projectId: string;
+  initialRows: ProgressRow[];
+  onClose: (saved: ProgressRow[]) => void;
+}) {
+  const [rows,    setRows]    = useState<ProgressRow[]>(initialRows.map(r => ({ ...r })));
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const addRow = () => {
+    const last = rows[rows.length - 1]?.yearMonth ?? new Date().toISOString().slice(0, 7);
+    const [y, m] = last.split('-').map(Number);
+    const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+    if (rows.find(r => r.yearMonth === next)) return;
+    setRows(prev => [...prev, { yearMonth: next, plan: 0, actual: null }]);
+  };
+
+  const removeRow = (ym: string) => setRows(prev => prev.filter(r => r.yearMonth !== ym));
+
+  const setField = (ym: string, field: 'plan' | 'actual', raw: string) => {
+    setRows(prev => prev.map(r => r.yearMonth === ym
+      ? { ...r, [field]: raw === '' ? null : parseFloat(raw) || 0 }
+      : r
+    ));
+  };
+
+  // CSV import — expects: Month(YYYY-MM), PlanIncrement, ActualIncrement
+  const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const text = ev.target?.result as string;
+        const lines = text.trim().split('\n').filter(l => l.trim());
+        const data: ProgressRow[] = [];
+        let cumPlan = 0, cumActual = 0;
+        for (let i = 1; i < lines.length; i++) {         // skip header row
+          const cols = lines[i].split(/[,;]/).map(c => c.trim().replace(/"/g, ''));
+          const ym    = cols[0]?.trim();
+          const planD = parseFloat(cols[1] ?? '0') || 0;
+          const actD  = parseFloat(cols[2] ?? '') ;
+          if (!ym || !/^\d{4}-\d{2}$/.test(ym)) continue;
+          cumPlan   = Math.min(100, cumPlan + planD);
+          if (!isNaN(actD)) cumActual = Math.min(100, cumActual + actD);
+          data.push({ yearMonth: ym, plan: parseFloat(cumPlan.toFixed(4)), actual: isNaN(actD) ? null : parseFloat(cumActual.toFixed(4)) });
+        }
+        if (!data.length) { setErr('Tidak ada data valid dalam file'); return; }
+        setRows(data.sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)));
+        setErr(null);
+      } catch { setErr('Gagal membaca file'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const res = await projectsApi.upsertProgress(projectId, rows.map(r => ({
+        yearMonth: r.yearMonth,
+        plan:      r.plan,
+        actual:    r.actual,
+      })));
+      onClose(res.data);
+    } catch (e: any) {
+      setErr(e?.response?.data?.message ?? 'Gagal menyimpan');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      {/* Toolbar */}
+      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+        <button type="button" onClick={addRow} style={eb.btnSm}>+ Bulan</button>
+        <button type="button" onClick={() => fileRef.current?.click()} style={eb.btnSm}>📥 Import CSV</button>
+        <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display:'none' }} onChange={handleCSV} />
+        <span style={{ fontSize:10, color:'#374151', flex:1, textAlign:'right' }}>
+          Format CSV: YearMonth (YYYY-MM) | Plan% | Actual%
+        </span>
+      </div>
+
+      {/* Table */}
+      <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid #1F2937', borderRadius:5 }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+          <thead>
+            <tr style={{ background:'#0D1526', position:'sticky', top:0 }}>
+              {['Bulan','Plan %','Aktual %',''].map(h => (
+                <th key={h} style={{ padding:'5px 8px', textAlign:'left', color:'#4B5563', fontWeight:600, fontSize:10 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr><td colSpan={4} style={{ padding:'14px 8px', textAlign:'center', color:'#374151', fontSize:11 }}>Belum ada data — tambah bulan atau import CSV</td></tr>
+            )}
+            {rows.map(r => (
+              <tr key={r.yearMonth} style={{ borderBottom:'1px solid #1F2937' }}>
+                <td style={{ padding:'4px 8px', color:'#9CA3AF', fontFamily:'monospace', fontSize:11 }}>{r.yearMonth}</td>
+                <td style={{ padding:'3px 6px' }}>
+                  <input type="number" min={0} max={100} step={0.01} value={r.plan ?? ''} onChange={e => setField(r.yearMonth, 'plan', e.target.value)}
+                    style={{ width:70, ...eb.cell }} />
+                </td>
+                <td style={{ padding:'3px 6px' }}>
+                  <input type="number" min={0} max={100} step={0.01} value={r.actual ?? ''} placeholder="—" onChange={e => setField(r.yearMonth, 'actual', e.target.value)}
+                    style={{ width:70, ...eb.cell }} />
+                </td>
+                <td style={{ padding:'3px 6px' }}>
+                  <button type="button" onClick={() => removeRow(r.yearMonth)} style={eb.del}>×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {err && <div style={{ fontSize:11, color:'#EF4444' }}>{err}</div>}
+
+      <div style={{ display:'flex', gap:6 }}>
+        <button type="button" onClick={handleSave} disabled={saving}
+          style={{ ...eb.btnPrimary, opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Menyimpan…' : 'Simpan S-Curve'}
+        </button>
+        <button type="button" onClick={() => onClose(initialRows)} style={eb.btnCancel}>Batal</button>
+      </div>
+    </div>
+  );
+}
+
+const eb: Record<string, CSSProperties> = {
+  btnSm:     { padding:'4px 10px', fontSize:10, fontWeight:600, borderRadius:4, border:'1px solid #374151', background:'transparent', color:'#9CA3AF', cursor:'pointer', fontFamily:'inherit' },
+  btnPrimary:{ padding:'6px 14px', fontSize:11, fontWeight:600, borderRadius:5, border:'none', background:'#0E91A5', color:'#fff', cursor:'pointer', fontFamily:'inherit' },
+  btnCancel: { padding:'6px 12px', fontSize:11, fontWeight:600, borderRadius:5, border:'1px solid #374151', background:'transparent', color:'#9CA3AF', cursor:'pointer', fontFamily:'inherit' },
+  cell:      { background:'#0D1526', border:'1px solid #374151', borderRadius:3, color:'#E5E7EB', fontSize:11, padding:'3px 5px', fontFamily:'inherit', outline:'none', boxSizing:'border-box' as const },
+  del:       { background:'none', border:'none', color:'#4B5563', cursor:'pointer', fontSize:14, padding:'0 4px', fontFamily:'inherit', lineHeight:1 },
+};
 
 interface Props {
   project:           Project | null;
@@ -173,6 +386,56 @@ function ProjectPicker({ slimProjects, value, onChange, multi = false, excludeId
   );
 }
 
+// ── S-Curve view section (fetches and shows chart in read-only mode) ─────────
+function SCurveSection({ projectId }: { projectId: string }) {
+  const [rows,    setRows]    = useState<ProgressRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    projectsApi.getProgress(projectId)
+      .then(res => setRows(res.data))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [projectId]);
+
+  return (
+    <>
+      <div style={d.divider} />
+      <div style={d.section}>
+        <div style={d.sTitle}>S-Curve Progress</div>
+        {loading
+          ? <div style={{ fontSize:11, color:'#374151' }}>Memuat…</div>
+          : <SCurveChart rows={rows ?? []} />
+        }
+      </div>
+    </>
+  );
+}
+
+// ── S-Curve editor section (self-fetches, used inside EditForm) ───────────────
+function SCurveEditorSection({ projectId }: { projectId: string }) {
+  const [rows,    setRows]    = useState<ProgressRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    projectsApi.getProgress(projectId)
+      .then(res => setRows(res.data))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [projectId]);
+
+  if (loading) return <div style={{ fontSize:11, color:'#4B5563', padding:'8px 0' }}>Memuat S-Curve…</div>;
+
+  return (
+    <SCurveEditor
+      projectId={projectId}
+      initialRows={rows ?? []}
+      onClose={saved => setRows(saved)}
+    />
+  );
+}
+
 // ── Inline edit form ──────────────────────────────────────────────────────────
 interface EditFormProps {
   project:      Project;
@@ -199,9 +462,9 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
   const [saving,          setSaving]         = useState(false);
   const [err,             setErr]            = useState<string|null>(null);
 
-  const planN = parseInt(plan)  || 0;
-  const realN = parseInt(real)  || 0;
-  const dev   = realN - planN;
+  const planN = parseFloat(plan)  || 0;
+  const realN = parseFloat(real)  || 0;
+  const dev   = parseFloat((realN - planN).toFixed(4));
 
   const toggleUrgency = (u: string) =>
     setUrgency(prev => prev.includes(u) ? prev.filter(x => x !== u) : [...prev, u]);
@@ -270,6 +533,7 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
           color: dev > 0 ? '#10B981' : dev < 0 ? '#EF4444' : '#9CA3AF' }}>
           {dev > 0 ? `+${dev}` : dev}%
         </span>
+
         <span style={{ fontSize:10, color: dev > 0 ? '#10B981' : dev < 0 ? '#EF4444' : '#9CA3AF', marginLeft:4 }}>
           {dev > 0 ? '▲ Ahead' : dev < 0 ? '▼ Behind' : '● On schedule'}
         </span>
@@ -393,6 +657,12 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
       <div>
         <ELabel>Catatan / Detail</ELabel>
         <ETextarea value={detail} onChange={setDetail} placeholder="Keterangan tambahan tentang proyek…" />
+      </div>
+
+      {/* S-Curve */}
+      <div style={{ borderTop:'1px solid #1F2937', paddingTop:12 }}>
+        <ELabel>S-Curve Progress</ELabel>
+        <SCurveEditorSection projectId={project.id} />
       </div>
 
       {err && <div style={{ fontSize:12, color:'#EF4444', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:5, padding:'8px 10px' }}>{err}</div>}
@@ -611,6 +881,8 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
               </div>
             </>
           )}
+
+          <SCurveSection projectId={project.id} />
 
           {related.length > 0 && (
             <>

@@ -50,9 +50,9 @@ model Project {
   codKontraktual    String?
   codEstimasi       String?
   issueType         String        @default("None")
-  progressPlan      Int           @default(0)
-  progressRealisasi Int           @default(0)
-  deviasi           Int           @default(0)
+  progressPlan      Float         @default(0)
+  progressRealisasi Float         @default(0)
+  deviasi           Float         @default(0)
   lat               Float?
   lng               Float?
   island            String
@@ -74,11 +74,27 @@ model Project {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
+  progress          ProjectProgress[]
+
   @@index([status])
   @@index([province])
   @@index([island])
   @@index([type, subtype])
   @@index([province, status])
+}
+
+model ProjectProgress {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  yearMonth String
+  plan      Float
+  actual    Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, yearMonth])
+  @@index([projectId])
 }
 
 model AuditLog {

@@ -9,6 +9,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ListProjectsDto } from './dto/list-projects.dto';
+import { UpsertProgressDto } from './dto/upsert-progress.dto';
 
 @Controller('projects')
 @UseGuards(AuthGuard('access'), RolesGuard)
@@ -23,6 +24,17 @@ export class ProjectsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.projects.findOne(id);
+  }
+
+  @Get(':id/progress')
+  getProgress(@Param('id') id: string) {
+    return this.projects.getProgress(id);
+  }
+
+  @Put(':id/progress')
+  @Roles(Role.ADMIN, Role.PIC)
+  upsertProgress(@Param('id') id: string, @Body() dto: UpsertProgressDto) {
+    return this.projects.upsertProgress(id, dto.rows);
   }
 
   @Post()

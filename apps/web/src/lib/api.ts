@@ -60,6 +60,8 @@ export const projectsApi = {
     const fd = new FormData(); fd.append('file', file);
     return api.post('/projects/import/commit', fd);
   },
+  getProgress:    (id: string)              => api.get(`/projects/${id}/progress`),
+  upsertProgress: (id: string, rows: any[]) => api.put(`/projects/${id}/progress`, { rows }),
 };
 
 export const analyticsApi = { summary: () => api.get('/analytics/summary') };
