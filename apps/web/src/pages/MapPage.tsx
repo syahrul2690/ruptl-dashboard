@@ -218,13 +218,21 @@ export default function MapPage() {
       </div>
 
       {/* Status bar */}
-      <div style={{ display:'flex', alignItems:'center', gap:20, padding:'5px 20px', background:'#0D1526', borderTop:'1px solid #1F2937', flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'5px 20px', background:'#0D1526', borderTop:'1px solid #1F2937', flexShrink:0, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'#4B5563', display:'flex', alignItems:'center', gap:5 }}>
+          <span style={{ width:6, height:6, borderRadius:'50%', background:'#10B981', boxShadow:'0 0 6px #10B981', animation:'pulse 2s infinite', display:'inline-block' }} />
+          System Online
+        </span>
+        {/* Voltage legend */}
         {[
-          { color: '#10B981', label: 'System Online' },
-        ].map(s => (
-          <span key={s.label} style={{ fontSize:10, color:'#4B5563', display:'flex', alignItems:'center', gap:5 }}>
-            <span style={{ width:6, height:6, borderRadius:'50%', background:s.color, boxShadow:`0 0 6px ${s.color}`, animation:'pulse 2s infinite', display:'inline-block' }} />
-            {s.label}
+          { color: '#F97316', label: 'SUTET 500 kV' },
+          { color: '#A855F7', label: 'SUTT 275 kV'  },
+          { color: '#38BDF8', label: 'SUTT 150 kV'  },
+          { color: '#4ADE80', label: 'SUTT 70 kV'   },
+        ].map(v => (
+          <span key={v.label} style={{ fontSize:10, color:'#4B5563', display:'flex', alignItems:'center', gap:4 }}>
+            <span style={{ display:'inline-block', width:16, height:2, background:v.color, borderRadius:1 }} />
+            {v.label}
           </span>
         ))}
         <span style={{ fontSize:10, color:'#4B5563' }}>

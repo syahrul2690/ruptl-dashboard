@@ -13,6 +13,17 @@ interface Props {
   activeStatuses:  ProjectStatus[];
 }
 
+// Derive line color from voltage level embedded in subtype string
+// Falls back to status color if voltage can't be determined
+function lineVoltageColor(subtype: string): string {
+  const s = subtype.toUpperCase();
+  if (s.includes('500')) return '#F97316'; // orange  — SUTET 500 kV
+  if (s.includes('275')) return '#A855F7'; // purple  — SUTT 275 kV
+  if (s.includes('150')) return '#38BDF8'; // sky     — SUTT 150 kV
+  if (s.includes('70'))  return '#4ADE80'; // lime    — SUTT 70 kV
+  return '#9CA3AF';                        // gray    — unknown
+}
+
 function nodeColor(p: ProjectSlim): string {
   if (p.issueType !== 'None') return '#EF4444';
   return (STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION).color;
@@ -127,7 +138,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         const visible  = isVisible(line, activeFilters, activeProvinces, activeStatuses);
         const isSel    = line.id === selectedId;
         const isHl     = highlightedIds.includes(line.id);
-        const color    = (STATUS_CONFIG[line.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION).color;
+        const color    = lineVoltageColor(line.subtype);
         const weight   = isSel ? 4.5 : isHl ? 3.5 : 2.5;
         const opacity  = visible ? 1 : 0.06;
         const dash     = line.status === 'PRE_CONSTRUCTION' ? '8,5' : undefined;
