@@ -31,8 +31,10 @@ RUN pnpm install --frozen-lockfile --prod --filter api...
 
 COPY --from=builder /app/apps/api/dist    ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma  ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 WORKDIR /app/apps/api
+# prisma is a devDep so the CLI is absent in this stage; pin to the lockfile version
+RUN npx prisma@5.22.0 generate
+
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma@5.22.0 migrate deploy && node dist/main"]
