@@ -103,6 +103,8 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
   const [results, setResults] = useState<PickerItem[]>([]);
   const [open,    setOpen]    = useState(false);
   const [loading, setLoading] = useState(false);
+  // Cache of id→name for every item ever selected, so chips survive result changes
+  const nameCache = useRef<Map<string, string>>(new Map());
   const ref    = useRef<HTMLDivElement>(null);
   const timer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -118,11 +120,12 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
       try {
         const res = await projectsApi.list({ search: query || undefined, limit: 20, fields: 'slim' });
         const data: any[] = res.data.data ?? res.data;
-        setResults(
-          data
-            .filter((p: any) => !excludeIds.includes(p.id))
-            .map((p: any) => ({ id: p.id, name: p.name, ruptlCode: p.subtype ?? p.type, type: p.type }))
-        );
+        const items = data
+          .filter((p: any) => !excludeIds.includes(p.id))
+          .map((p: any) => ({ id: p.id, name: p.name, ruptlCode: p.subtype ?? p.type, type: p.type }));
+        // Populate name cache from every result page
+        items.forEach(i => nameCache.current.set(i.id, i.name));
+        setResults(items);
       } catch { setResults([]); }
       finally { setLoading(false); }
     }, 300);
@@ -136,6 +139,7 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
   }, []);
 
   const select = (item: PickerItem) => {
+    nameCache.current.set(item.id, item.name);
     if (multi) {
       const next = selectedIds.includes(item.id)
         ? selectedIds.filter(id => id !== item.id)
@@ -153,9 +157,9 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
     else onChange('');
   };
 
-  // Look up name from results or show truncated id
+  // Name comes from cache first, then current results, then truncated id
   const displayName = (id: string) =>
-    results.find(r => r.id === id)?.name ?? id.slice(0, 8) + '…';
+    nameCache.current.get(id) ?? results.find(r => r.id === id)?.name ?? id.slice(0, 8) + '…';
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
