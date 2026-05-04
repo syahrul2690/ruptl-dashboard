@@ -151,7 +151,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         const color    = lineVoltageColor(line.subtype);
         const weight   = isSel ? 4.5 : isHl ? 3.5 : 2.5;
         const opacity  = visible ? 1 : 0.06;
-        const dash     = line.status === 'PRE_CONSTRUCTION' ? '8,5' : undefined;
+        const dash     = line.status !== 'ENERGIZED' ? '8,5' : undefined;
         const latlngs: L.LatLngTuple[] = [[from.lat, from.lng], [to.lat, to.lng]];
 
         if (isSel || isHl) {
