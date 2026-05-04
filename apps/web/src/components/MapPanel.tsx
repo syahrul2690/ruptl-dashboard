@@ -25,27 +25,37 @@ function lineVoltageColor(subtype: string): string {
 }
 
 function nodeColor(p: ProjectSlim): string {
-  if (p.issueType !== 'None') return '#EF4444';
   return (STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION).color;
 }
 
 function markerHtml(p: ProjectSlim, isSel: boolean, isHl: boolean): string {
-  const color = nodeColor(p);
-  const size  = isSel ? 22 : isHl ? 18 : 14;
-  const glow  = size + 12;
-  const isGI  = p.type === 'SUBSTATION';
-  const ring  = isSel ? `<div style="position:absolute;width:${size+10}px;height:${size+10}px;${isGI ? '' : 'border-radius:50%;'}border:1.5px solid rgba(255,255,255,0.65);transform:${isGI ? 'rotate(45deg)' : 'none'};"></div>` : '';
+  const color    = nodeColor(p);
+  const hasIssue = p.issueType !== 'None';
+  const size     = isSel ? 22 : isHl ? 18 : 14;
+  const glow     = size + 12;
+  const isGI     = p.type === 'SUBSTATION';
+  const shape    = isGI ? '' : 'border-radius:50%;';
+  const rotate   = isGI ? 'transform:rotate(45deg);' : '';
+
+  // White ring when selected
+  const selRing   = isSel
+    ? `<div style="position:absolute;width:${size+10}px;height:${size+10}px;${shape}${rotate}border:1.5px solid rgba(255,255,255,0.65);"></div>`
+    : '';
+  // Red border ring when issue exists — sits just outside the icon shape
+  const issueRing = hasIssue
+    ? `<div style="position:absolute;width:${size+5}px;height:${size+5}px;${shape}${rotate}border:2px solid #EF4444;box-shadow:0 0 7px rgba(239,68,68,0.55);z-index:2;"></div>`
+    : '';
 
   if (isGI) {
     return `<div style="position:relative;width:${glow}px;height:${glow}px;display:flex;align-items:center;justify-content:center;">
       <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:${isSel?0.35:0.12};filter:blur(5px);"></div>
-      ${ring}
+      ${selRing}${issueRing}
       <div style="width:${size}px;height:${size}px;background:${color};transform:rotate(45deg);box-shadow:0 0 ${isSel?14:7}px ${color};z-index:1;"></div>
     </div>`;
   }
   return `<div style="position:relative;width:${glow}px;height:${glow}px;display:flex;align-items:center;justify-content:center;">
     <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:${isSel?0.35:0.12};filter:blur(5px);"></div>
-    ${ring}
+    ${selRing}${issueRing}
     <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 ${isSel?14:7}px ${color};z-index:1;display:flex;align-items:center;justify-content:center;">
       <div style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.9);"></div>
     </div>
