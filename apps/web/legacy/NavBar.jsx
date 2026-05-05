@@ -15,7 +15,7 @@ const NavBar = ({ activePage, onNavigate }) => {
         <div style={navStyles.brandSep}></div>
         <div>
           <div style={navStyles.title}>RUPTL Dashboard</div>
-          <div style={navStyles.subtitle}>Perusahaan Listrik Negara · 2024–2033</div>
+          <div style={navStyles.subtitle}>PT PLN (Persero) Pusat Manajemen Proyek</div>
         </div>
       </div>
 

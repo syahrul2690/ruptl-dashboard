@@ -95,7 +95,7 @@ const FilterBar = ({ activeFilters, onToggle, onClearAll, projectCounts, activeP
         <img src={PLN_LOGO_B64} alt="PLN" style={fbStyles.logo} onError={e => { e.target.style.display="none"; }} />
         <div>
           <div style={fbStyles.title}>RUPTL Project Management Dashboard</div>
-          <div style={fbStyles.subtitle}>Perusahaan Listrik Negara · 2024–2033</div>
+          <div style={fbStyles.subtitle}>PT PLN (Persero) Pusat Manajemen Proyek</div>
         </div>
       </div>
 

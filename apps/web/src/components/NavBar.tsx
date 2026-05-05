@@ -41,7 +41,7 @@ export default function NavBar() {
         <div style={{ width:1, height:20, background:dividerC }} />
         <div>
           <div style={{ fontSize:12, fontWeight:700, color:'#FFFFFF', lineHeight:1.2 }}>RUPTL Dashboard</div>
-          <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)' }}>Perusahaan Listrik Negara · 2024–2033</div>
+          <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)' }}>PT PLN (Persero) Pusat Manajemen Proyek</div>
         </div>
       </div>
 
