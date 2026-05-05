@@ -37,14 +37,14 @@ export const DARK = {
   textPrimary: '#F9FAFB',
   textSec:     '#9CA3AF',
   textMuted:   '#4B5563',
-  accent:      '#0E91A5',
-  navActive:   '#0E91A5',
-  navActiveBg: 'rgba(14,145,165,0.08)',
+  accent:      '#008BA0',
+  navActive:   '#008BA0',
+  navActiveBg: 'rgba(0,139,160,0.08)',
   hoverBg:     '#1F2937',
   divider:     '#1F2937',
   hbarTrack:   '#1F2937',
   spinnerBdr:  '#374151',
-  spinnerTop:  '#0E91A5',
+  spinnerTop:  '#008BA0',
   statusBar:   '#0D1526',
 } as const;
 

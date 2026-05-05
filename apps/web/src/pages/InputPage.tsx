@@ -38,9 +38,9 @@ function MultiCheck({ options, selected, onChange }: {
         return (
           <button key={opt} type="button" onClick={() => toggle(opt)} style={{
             padding: '3px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 500, cursor: 'pointer',
-            border: `1px solid ${active ? 'rgba(14,145,165,0.5)' : '#374151'}`,
-            background: active ? 'rgba(14,145,165,0.12)' : 'transparent',
-            color: active ? '#0E91A5' : '#6B7280', fontFamily: 'inherit',
+            border: `1px solid ${active ? 'rgba(0,139,160,0.5)' : '#374151'}`,
+            background: active ? 'rgba(0,139,160,0.12)' : 'transparent',
+            color: active ? '#008BA0' : '#6B7280', fontFamily: 'inherit',
           }}>{opt}</button>
         );
       })}
@@ -170,11 +170,11 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
             <span key={id} style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500,
-              background: 'rgba(14,145,165,0.1)', color: '#0E91A5',
-              border: '1px solid rgba(14,145,165,0.3)',
+              background: 'rgba(0,139,160,0.1)', color: '#008BA0',
+              border: '1px solid rgba(0,139,160,0.3)',
             }}>
               {displayName(id)}
-              <button type="button" onClick={() => remove(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0E91A5', padding: 0, lineHeight: 1, fontSize: 13 }}>×</button>
+              <button type="button" onClick={() => remove(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#008BA0', padding: 0, lineHeight: 1, fontSize: 13 }}>×</button>
             </span>
           ))}
         </div>
@@ -206,11 +206,11 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
             return (
               <div key={item.id} onClick={() => select(item)} style={{
                 padding: '8px 12px', cursor: 'pointer', fontSize: 11,
-                background: sel ? 'rgba(14,145,165,0.1)' : 'transparent',
+                background: sel ? 'rgba(0,139,160,0.1)' : 'transparent',
                 borderBottom: '1px solid #1F2937',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
-                {sel && <span style={{ color: '#0E91A5', fontWeight: 700 }}>✓</span>}
+                {sel && <span style={{ color: '#008BA0', fontWeight: 700 }}>✓</span>}
                 <div>
                   <div style={{ color: '#E5E7EB', fontWeight: 500 }}>{item.name}</div>
                   <div style={{ color: '#4B5563', fontFamily: 'monospace', fontSize: 10 }}>{item.ruptlCode} · {item.type.replace(/_/g, ' ')}</div>
@@ -386,7 +386,7 @@ function ManualForm() {
 
       {isTransmission && (
         <div style={{ background: '#0D1526', border: '1px solid #1F2937', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ fontSize: 11, color: '#0E91A5', fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: '#008BA0', fontWeight: 600 }}>
             Transmission Line — pilih Gardu / PLTU di ujung jalur transmisi ini
           </div>
           <Row>
@@ -611,16 +611,16 @@ function ExcelImport() {
         onDragOver={e => e.preventDefault()}
         onClick={() => inputRef.current?.click()}
         style={{
-          border: `2px dashed ${file ? '#0E91A5' : '#374151'}`,
+          border: `2px dashed ${file ? '#008BA0' : '#374151'}`,
           borderRadius: 10, padding: '32px 24px', textAlign: 'center', cursor: 'pointer',
-          background: file ? 'rgba(14,145,165,0.04)' : 'transparent', transition: 'all 200ms',
+          background: file ? 'rgba(0,139,160,0.04)' : 'transparent', transition: 'all 200ms',
         }}
       >
         <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handlePick} />
         <div style={{ fontSize: 32, marginBottom: 10 }}>📂</div>
         {file ? (
           <>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0E91A5' }}>{file.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#008BA0' }}>{file.name}</div>
             <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>{(file.size / 1024).toFixed(1)} KB · Klik untuk ganti</div>
           </>
         ) : (
@@ -643,7 +643,7 @@ function ExcelImport() {
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 10 }}>
           {['ruptlCode','name','type','subtype','status','province','island','gridSystem','lat','lng'].map(col => (
-            <code key={col} style={{ fontSize: 11, color: '#0E91A5', fontFamily: 'monospace' }}>{col}</code>
+            <code key={col} style={{ fontSize: 11, color: '#008BA0', fontFamily: 'monospace' }}>{col}</code>
           ))}
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>
@@ -774,7 +774,7 @@ function ExcelImport() {
                   <tbody>
                     {preview.preview.map((row, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #111827' }}>
-                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#0E91A5' }}>{row.ruptlCode}</td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#008BA0' }}>{row.ruptlCode}</td>
                         <td style={{ ...s.td, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</td>
                         <td style={s.td}>{row.type?.replace(/_/g, ' ')}</td>
                         <td style={s.td}>{row.status?.replace(/_/g, ' ')}</td>
@@ -813,8 +813,8 @@ export default function InputPage() {
           <button key={t} type="button" onClick={() => setTab(t)} style={{
             padding: '8px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
             border: 'none', fontFamily: 'inherit', background: 'transparent',
-            color: tab === t ? '#0E91A5' : '#4B5563',
-            borderBottom: `2px solid ${tab === t ? '#0E91A5' : 'transparent'}`,
+            color: tab === t ? '#008BA0' : '#4B5563',
+            borderBottom: `2px solid ${tab === t ? '#008BA0' : 'transparent'}`,
             marginBottom: -1, transition: 'all 150ms',
           }}>
             {t === 'manual' ? 'Form Manual' : 'Import Excel / CSV'}
@@ -834,7 +834,7 @@ const s: Record<string, CSSProperties> = {
   label:       { fontSize: 11, fontWeight: 600, color: '#6B7280', letterSpacing: '0.04em' },
   input:       { background: '#0D1526', border: '1px solid #374151', borderRadius: 6, padding: '7px 11px', fontSize: 12, color: '#E5E7EB', outline: 'none', width: '100%', fontFamily: 'inherit', boxSizing: 'border-box' },
   select:      { background: '#0D1526', border: '1px solid #374151', borderRadius: 6, padding: '7px 11px', fontSize: 12, color: '#E5E7EB', outline: 'none', width: '100%', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer' },
-  btnPrimary:  { padding: '8px 20px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', background: '#0E91A5', color: '#fff', fontFamily: 'inherit' },
+  btnPrimary:  { padding: '8px 20px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', background: '#008BA0', color: '#fff', fontFamily: 'inherit' },
   btnSecondary:{ padding: '8px 20px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid #374151', background: 'transparent', color: '#9CA3AF', fontFamily: 'inherit' },
   btnGhost:    { padding: '8px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'transparent', color: '#6B7280', fontFamily: 'inherit' },
   btnDisabled: { padding: '8px 20px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'not-allowed', border: 'none', background: '#1F2937', color: '#4B5563', fontFamily: 'inherit' },

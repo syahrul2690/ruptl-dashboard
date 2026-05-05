@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
         <KpiCard label="Panjang Jaringan" value={Math.round(+capacity.total_km)}  unit="km"
           color="#3B82F6"  sub="Transmisi SUTT & SUTET" />
         <KpiCard label="Kapasitas Gardu" value={Math.round(+capacity.total_mva)} unit="MVA"
-          color="#0E91A5"  sub="Gardu Induk (Substation)" />
+          color="#008BA0"  sub="Gardu Induk (Substation)" />
         <KpiCard label="Proyek Terlambat" value={byTrack.delayed}
           color="#EF4444"  sub={`dari ${total} total proyek`} />
       </div>
@@ -260,8 +260,8 @@ export default function AnalyticsPage() {
 
         <ChartCard title="Tipe Proyek" subtitle="Jenis infrastruktur">
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <DonutChart data={typeData} colors={['#10B981','#0E91A5','#3B82F6']} size={130} />
-            <Legend items={typeData.map((d,i) => ({ ...d, color: ['#10B981','#0E91A5','#3B82F6'][i] }))} />
+            <DonutChart data={typeData} colors={['#10B981','#008BA0','#3B82F6']} size={130} />
+            <Legend items={typeData.map((d,i) => ({ ...d, color: ['#10B981','#008BA0','#3B82F6'][i] }))} />
           </div>
         </ChartCard>
       </div>
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
       <SectionHeader title="Distribusi Jumlah Proyek" />
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
         <ChartCard title="Proyek per Pulau" subtitle="Jumlah proyek">
-          <HBar rows={islandRows} color="#0E91A5" unit="proyek" />
+          <HBar rows={islandRows} color="#008BA0" unit="proyek" />
         </ChartCard>
         <ChartCard title="Proyek per Provinsi" subtitle="Jumlah proyek">
           <HBar rows={provinceRows} color="#3B82F6" unit="proyek" />
@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
           <HBar rows={mwGridRows} color="#10B981" unit="MW" emptyText="Belum ada data kapasitas pembangkit" />
         </ChartCard>
         <ChartCard title="Kapasitas Transformator per Sistem Grid" subtitle="Total MVA · Substation">
-          <HBar rows={mvaGridRows} color="#0E91A5" unit="MVA" emptyText="Belum ada data kapasitas transformator" />
+          <HBar rows={mvaGridRows} color="#008BA0" unit="MVA" emptyText="Belum ada data kapasitas transformator" />
         </ChartCard>
         <ChartCard title="Panjang Transmisi per Sistem Grid" subtitle="Total km · Transmission Line">
           <HBar rows={kmGridRows} color="#3B82F6" unit="km" emptyText="Belum ada data panjang transmisi" />

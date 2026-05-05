@@ -66,7 +66,7 @@ function tooltipHtml(p: ProjectSlim): string {
   const cfg   = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
   const tType = p.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   return `<div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;max-width:230px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
-    <div style="font-size:10px;color:#0E91A5;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;">${p.subtype} · ${p.island}</div>
+    <div style="font-size:10px;color:#008BA0;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;">${p.subtype} · ${p.island}</div>
     <div style="font-size:13px;font-weight:600;color:#F9FAFB;line-height:1.3;margin-bottom:6px;">${p.name}</div>
     <div style="display:flex;align-items:center;gap:5px;">
       <div style="width:6px;height:6px;border-radius:50%;background:${cfg.color};box-shadow:0 0 4px ${cfg.color};"></div>
@@ -188,7 +188,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       iconCreateFunction: (c: any) => {
         const count = c.getChildCount();
         return L.divIcon({
-          html: `<div style="background:rgba(14,145,165,0.85);border:2px solid rgba(14,145,165,0.5);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;color:#fff;box-shadow:0 0 10px rgba(14,145,165,0.4);">${count}</div>`,
+          html: `<div style="background:rgba(0,139,160,0.85);border:2px solid rgba(0,139,160,0.5);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;color:#fff;box-shadow:0 0 10px rgba(0,139,160,0.4);">${count}</div>`,
           className: '', iconSize: [34, 34], iconAnchor: [17, 17],
         });
       },
@@ -244,7 +244,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       <div style={mp.legend}>
         {[
           { type: 'circle',  color: '#10B981', label: 'Power Plant' },
-          { type: 'diamond', color: '#0E91A5', label: 'Substation'  },
+          { type: 'diamond', color: '#008BA0', label: 'Substation'  },
           { type: 'line',    color: '#F59E0B', label: 'SUTET 500kV' },
           { type: 'line',    color: '#3B82F6', label: 'SUTT 150kV'  },
           { type: 'circle',  color: '#EF4444', label: 'Has Issue'   },

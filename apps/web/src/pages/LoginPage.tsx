@@ -33,7 +33,7 @@ export default function LoginPage() {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:c.bgPage }}>
         <div style={{ background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:12, padding:'40px 36px', width:380, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(14,145,165,0.12)', border:'1px solid rgba(14,145,165,0.3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4 }}>
+          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,139,160,0.12)', border:'1px solid rgba(0,139,160,0.3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4 }}>
             <span style={{ fontSize:26 }}>⚡</span>
           </div>
           <div style={{ fontSize:20, fontWeight:700, color:c.textPrimary }}>RUPTL Dashboard</div>
@@ -64,7 +64,7 @@ export default function LoginPage() {
               />
             </div>
             {error && <div style={{ fontSize:12, color:'#EF4444', padding:'8px 12px', background:'rgba(239,68,68,0.08)', borderRadius:6, border:'1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
-            <button style={{ background:'#0E91A5', color:'#fff', border:'none', borderRadius:6, padding:'10px', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'opacity 150ms', width:'100%', opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
+            <button style={{ background:'#008BA0', color:'#fff', border:'none', borderRadius:6, padding:'10px', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'opacity 150ms', width:'100%', opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
               {loading ? 'Masuk…' : 'Masuk'}
             </button>
           </form>

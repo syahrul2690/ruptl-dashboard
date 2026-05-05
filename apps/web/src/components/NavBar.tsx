@@ -17,7 +17,7 @@ const STAT_CHIPS = [
   { key: 'construction'    as const, label: 'Construction',      darkColor: '#F59E0B', lightColor: '#F6A821' },
   { key: 'energized'       as const, label: 'Energized',         darkColor: '#10B981', lightColor: '#34D399' },
   { key: 'powerPlant'      as const, label: 'Power Plant',       darkColor: '#10B981', lightColor: '#34D399' },
-  { key: 'substation'      as const, label: 'Gardu Induk',       darkColor: '#0E91A5', lightColor: '#38BDF8' },
+  { key: 'substation'      as const, label: 'Gardu Induk',       darkColor: '#008BA0', lightColor: '#38BDF8' },
   { key: 'transmissionLine'as const, label: 'Transmission Line', darkColor: '#F59E0B', lightColor: '#F6A821' },
 ];
 

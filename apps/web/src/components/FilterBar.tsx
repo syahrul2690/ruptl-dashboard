@@ -51,9 +51,9 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
     display:'inline-flex', alignItems:'center', gap:5, padding:'4px 11px',
     borderRadius:9999, fontSize:10, fontWeight:500, cursor:'pointer', border:'1px solid',
     transition:'all 150ms', fontFamily:'inherit', flexShrink:0, whiteSpace:'nowrap',
-    background:  has ? 'rgba(14,145,165,0.12)' : c.bgInput,
-    color:       has ? '#0E91A5' : c.textSec,
-    borderColor: has ? 'rgba(14,145,165,0.5)' : c.borderInput,
+    background:  has ? 'rgba(0,139,160,0.12)' : c.bgInput,
+    color:       has ? '#008BA0' : c.textSec,
+    borderColor: has ? 'rgba(0,139,160,0.5)' : c.borderInput,
   } as CSSProperties;
 
   return (
@@ -72,11 +72,11 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
           {PROVINCE_OPTIONS.map(prov => {
             const active = activeProvinces.includes(prov);
             return (
-              <div key={prov} onClick={() => onToggle(prov)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', fontSize:12, fontWeight:500, cursor:'pointer', transition:'background 100ms', background: active ? 'rgba(14,145,165,0.1)' : 'transparent', color: active ? '#0E91A5' : c.textSec }}
+              <div key={prov} onClick={() => onToggle(prov)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', fontSize:12, fontWeight:500, cursor:'pointer', transition:'background 100ms', background: active ? 'rgba(0,139,160,0.1)' : 'transparent', color: active ? '#008BA0' : c.textSec }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = c.hoverBg; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
               >
-                <div style={{ width:14, height:14, borderRadius:3, flexShrink:0, border:`1.5px solid ${active?'#0E91A5':c.borderInput}`, background:active?'#0E91A5':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:14, height:14, borderRadius:3, flexShrink:0, border:`1.5px solid ${active?'#008BA0':c.borderInput}`, background:active?'#008BA0':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   {active && <span style={{ color:'#fff', fontSize:9, lineHeight:1 }}>✓</span>}
                 </div>
                 {prov}

@@ -326,9 +326,9 @@ function AuditTab() {
         {['', 'Project', 'User', 'Auth'].map(e => (
           <button key={e} onClick={() => setEntity(e)} style={{
             ...a.pill,
-            background:  entity === e ? 'rgba(14,145,165,0.15)' : 'transparent',
-            color:       entity === e ? '#0E91A5' : '#6B7280',
-            borderColor: entity === e ? 'rgba(14,145,165,0.5)' : '#374151',
+            background:  entity === e ? 'rgba(0,139,160,0.15)' : 'transparent',
+            color:       entity === e ? '#008BA0' : '#6B7280',
+            borderColor: entity === e ? 'rgba(0,139,160,0.5)' : '#374151',
           }}>
             {e || 'Semua'}
           </button>
@@ -371,7 +371,7 @@ function AuditTab() {
                         </span>
                       </td>
                       <td style={{ ...a.td, color:'#E5E7EB', fontWeight:500 }}>{log.entity}</td>
-                      <td style={{ ...a.td, fontFamily:'monospace', color:'#0E91A5', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      <td style={{ ...a.td, fontFamily:'monospace', color:'#008BA0', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {log.entityId ?? '—'}
                       </td>
                       <td style={{ ...a.td, fontFamily:'monospace', color:'#4B5563' }}>{log.ip ?? '—'}</td>
@@ -434,8 +434,8 @@ export default function AdminPage() {
           <button key={t} onClick={() => setTab(t)} style={{
             padding:'8px 18px', fontSize:12, fontWeight:600, cursor:'pointer',
             border:'none', fontFamily:'inherit', background:'transparent',
-            color: tab === t ? '#0E91A5' : '#4B5563',
-            borderBottom:`2px solid ${tab === t ? '#0E91A5' : 'transparent'}`,
+            color: tab === t ? '#008BA0' : '#4B5563',
+            borderBottom:`2px solid ${tab === t ? '#008BA0' : 'transparent'}`,
             marginBottom:-1, transition:'all 150ms',
           }}>
             {label}
@@ -459,7 +459,7 @@ const a: Record<string, CSSProperties> = {
   select:     { background:'#0D1526', border:'1px solid #374151', borderRadius:6, padding:'7px 11px', fontSize:12, color:'#E5E7EB', outline:'none', width:'100%', fontFamily:'inherit', boxSizing:'border-box', cursor:'pointer' },
   th:         { padding:'8px 14px', textAlign:'left', color:'#4B5563', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', fontSize:10, borderBottom:'1px solid #1F2937', whiteSpace:'nowrap' },
   td:         { padding:'10px 14px', color:'#9CA3AF', verticalAlign:'middle' },
-  btnPrimary: { padding:'7px 16px', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:'#0E91A5', color:'#fff', fontFamily:'inherit' },
+  btnPrimary: { padding:'7px 16px', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background:'#008BA0', color:'#fff', fontFamily:'inherit' },
   btnSecondary:{ padding:'7px 14px', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid #374151', background:'transparent', color:'#9CA3AF', fontFamily:'inherit' },
   btnDisabled:{ padding:'7px 14px', borderRadius:7, fontSize:12, fontWeight:600, cursor:'not-allowed', border:'1px solid #1F2937', background:'transparent', color:'#374151', fontFamily:'inherit' },
   btnMini:    { padding:'3px 10px', borderRadius:5, fontSize:11, fontWeight:600, cursor:'pointer', border:'1px solid #374151', background:'transparent', color:'#9CA3AF', fontFamily:'inherit' },
@@ -469,5 +469,5 @@ const a: Record<string, CSSProperties> = {
   errBox:     { background:'#450A0A', border:'1px solid #EF4444', borderRadius:6, padding:'8px 12px', fontSize:12, color:'#FCA5A5' },
   pill:       { padding:'3px 10px', borderRadius:9999, fontSize:11, fontWeight:500, cursor:'pointer', border:'1px solid', fontFamily:'inherit', transition:'all 150ms' },
   filterLabel:{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:'#4B5563', textTransform:'uppercase' },
-  spinner:    { width:16, height:16, border:'2px solid #374151', borderTopColor:'#0E91A5', borderRadius:'50%', animation:'spin 0.8s linear infinite' },
+  spinner:    { width:16, height:16, border:'2px solid #374151', borderTopColor:'#008BA0', borderRadius:'50%', animation:'spin 0.8s linear infinite' },
 };
