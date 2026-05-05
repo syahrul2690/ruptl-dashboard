@@ -37,7 +37,7 @@ export default function NavBar() {
     <div style={{ display:'flex', alignItems:'center', padding:'0 20px', height:52, background:navBg, borderBottom:`1px solid ${navBorder}`, flexShrink:0 }}>
       {/* Brand */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginRight:24 }}>
-        <img src="/pln-logo.svg" alt="PLN" style={{ height:32, width:'auto', objectFit:'contain' }} />
+        <img src="/pln-logo.png" alt="PLN" style={{ height:36, width:'auto', objectFit:'contain' }} />
         <div style={{ width:1, height:20, background:dividerC }} />
         <div>
           <div style={{ fontSize:12, fontWeight:700, color:'#FFFFFF', lineHeight:1.2 }}>RUPTL Dashboard</div>

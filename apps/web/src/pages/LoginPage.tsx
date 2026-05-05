@@ -33,8 +33,9 @@ export default function LoginPage() {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:c.bgPage }}>
         <div style={{ background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:12, padding:'40px 36px', width:380, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,139,160,0.12)', border:'1px solid rgba(0,139,160,0.3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4, padding:8 }}>
-            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+          {/* PLN logo — portrait PNG fits naturally in a circle */}
+          <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(0,139,160,0.08)', border:'1px solid rgba(0,139,160,0.25)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4, padding:6 }}>
+            <img src="/pln-logo.png" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
           <div style={{ fontSize:20, fontWeight:700, color:c.textPrimary }}>RUPTL Dashboard</div>
           <div style={{ fontSize:11, color:c.textMuted, marginBottom:20 }}>Perusahaan Listrik Negara · 2024–2033</div>
@@ -79,8 +80,9 @@ export default function LoginPage() {
       {/* Left — form panel */}
       <div style={{ flex:'0 0 480px', display:'flex', flexDirection:'column', justifyContent:'center', padding:'60px 56px', background:'#FFFFFF' }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:36 }}>
-          <div style={{ width:44, height:44, borderRadius:'50%', background:'#1B3A4B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, padding:7 }}>
-            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain', filter:'brightness(0) invert(1)' }} />
+          {/* PNG logo on dark circle — no filter needed, PNG has real PLN colors */}
+          <div style={{ width:48, height:48, borderRadius:'50%', background:'#1B3A4B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, padding:8 }}>
+            <img src="/pln-logo.png" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#1B3A4B', lineHeight:1.2 }}>RUPTL Dashboard</div>
@@ -130,8 +132,9 @@ export default function LoginPage() {
           <path d="M60,0 Q0,150 60,300 Q0,450 60,600 L0,600 L0,0 Z" fill="white" />
         </svg>
         <div style={{ position:'relative', zIndex:2, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:20, padding:'0 48px' }}>
-          <div style={{ width:96, height:96, borderRadius:'50%', background:'rgba(255,255,255,0.12)', border:'2px solid rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 32px rgba(0,0,0,0.35)', backdropFilter:'blur(8px)', padding:16 }}>
-            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain', filter:'brightness(0) invert(1)' }} />
+          {/* Large PLN logo — PNG portrait fits circle perfectly */}
+          <div style={{ width:108, height:108, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'2px solid rgba(255,255,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 32px rgba(0,0,0,0.35)', backdropFilter:'blur(8px)', padding:14 }}>
+            <img src="/pln-logo.png" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
           <div style={{ fontSize:24, fontWeight:700, color:'#FFFFFF', lineHeight:1.3, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>Sistem Informasi<br />RUPTL PLN</div>
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, textShadow:'0 1px 4px rgba(0,0,0,0.4)' }}>Monitoring &amp; pelaporan proyek<br />ketenagalistrikan nasional 2024–2033</div>
