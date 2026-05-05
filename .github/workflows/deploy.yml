@@ -18,7 +18,8 @@ jobs:
             set -e
             cd ~/ruptl-dashboard
             git pull origin main
-            docker compose -f docker-compose.prod.yml build --no-cache api web
+            docker compose -f docker-compose.prod.yml build api web
+            docker compose -f docker-compose.prod.yml down --remove-orphans
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
             echo "✔ Deploy complete $(date)"
