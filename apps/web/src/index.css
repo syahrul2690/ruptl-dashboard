@@ -9,7 +9,7 @@ body {
 }
 [data-theme="simpp"] body {
   background: #EAF2F8;
-  color: #1A2F3D;
+  color: #0F1F2B;
 }
 /* Scrollbars — dark */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
