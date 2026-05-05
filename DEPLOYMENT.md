@@ -79,6 +79,39 @@ The API is healthy when the logs end with:
 
 ---
 
+## GitHub Actions Auto-Deploy
+
+Every push to `main` triggers the `.github/workflows/deploy.yml` workflow, which SSHes into the VPS and runs the full rebuild automatically.
+
+### Required Repository Secrets
+
+The workflow uses 3 secrets. If any are missing, the deploy step will fail with **"Error: missing server host"**.
+
+Go to: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
+
+Choose **Repository secret** (not Environment secret), then add each one:
+
+| Secret Name | Value |
+|---|---|
+| `VPS_HOST` | `103.93.161.157` |
+| `VPS_USER` | `pusmanpro` |
+| `VPS_SSH_KEY` | Full contents of `~/.ssh/ruptl-dashboard.pem` (include the `-----BEGIN/END-----` lines) |
+
+### How to verify secrets are set
+
+Go to **Settings → Secrets and variables → Actions**. You should see all 3 listed under *Repository secrets*.
+
+### What the workflow does on each push
+
+```
+git pull origin main
+docker compose -f docker-compose.prod.yml build --no-cache api web
+docker compose -f docker-compose.prod.yml up -d
+docker image prune -f
+```
+
+---
+
 ## Known Gotchas
 
 ### Prisma version must be pinned in the runner stage
