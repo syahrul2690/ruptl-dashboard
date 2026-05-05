@@ -33,8 +33,8 @@ export default function LoginPage() {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:c.bgPage }}>
         <div style={{ background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:12, padding:'40px 36px', width:380, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,139,160,0.12)', border:'1px solid rgba(0,139,160,0.3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4 }}>
-            <span style={{ fontSize:26 }}>⚡</span>
+          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(0,139,160,0.12)', border:'1px solid rgba(0,139,160,0.3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:4, padding:8 }}>
+            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
           <div style={{ fontSize:20, fontWeight:700, color:c.textPrimary }}>RUPTL Dashboard</div>
           <div style={{ fontSize:11, color:c.textMuted, marginBottom:20 }}>Perusahaan Listrik Negara · 2024–2033</div>
@@ -79,8 +79,8 @@ export default function LoginPage() {
       {/* Left — form panel */}
       <div style={{ flex:'0 0 480px', display:'flex', flexDirection:'column', justifyContent:'center', padding:'60px 56px', background:'#FFFFFF' }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:36 }}>
-          <div style={{ width:44, height:44, borderRadius:'50%', background:'#1B3A4B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <span style={{ fontSize:22 }}>⚡</span>
+          <div style={{ width:44, height:44, borderRadius:'50%', background:'#1B3A4B', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, padding:7 }}>
+            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain', filter:'brightness(0) invert(1)' }} />
           </div>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#1B3A4B', lineHeight:1.2 }}>RUPTL Dashboard</div>
@@ -122,14 +122,19 @@ export default function LoginPage() {
       </div>
 
       {/* Right — decorative panel */}
-      <div style={{ flex:1, background:'#EAF2F8', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-        <svg viewBox="0 0 200 600" preserveAspectRatio="none" style={{ position:'absolute', left:0, top:0, height:'100%', width:60 }}>
+      <div style={{ flex:1, position:'relative', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', background:'#1B3A4B' }}>
+        {/* Background image */}
+        <img src="/login-bg.jpeg" alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.35 }} />
+        {/* Wave separator on left */}
+        <svg viewBox="0 0 200 600" preserveAspectRatio="none" style={{ position:'absolute', left:0, top:0, height:'100%', width:60, zIndex:1 }}>
           <path d="M60,0 Q0,150 60,300 Q0,450 60,600 L0,600 L0,0 Z" fill="white" />
         </svg>
-        <div style={{ position:'relative', zIndex:1, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:16, padding:'0 40px' }}>
-          <div style={{ width:88, height:88, borderRadius:'50%', background:'#1B3A4B', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 32px rgba(27,58,75,0.25)', fontSize:44 }}>⚡</div>
-          <div style={{ fontSize:22, fontWeight:700, color:'#1B3A4B', lineHeight:1.3 }}>Sistem Informasi<br />RUPTL PLN</div>
-          <div style={{ fontSize:13, color:'#4B6275', lineHeight:1.6 }}>Monitoring &amp; pelaporan proyek<br />ketenagalistrikan nasional 2024–2033</div>
+        <div style={{ position:'relative', zIndex:2, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:20, padding:'0 48px' }}>
+          <div style={{ width:96, height:96, borderRadius:'50%', background:'rgba(255,255,255,0.12)', border:'2px solid rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 32px rgba(0,0,0,0.35)', backdropFilter:'blur(8px)', padding:16 }}>
+            <img src="/pln-logo.svg" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain', filter:'brightness(0) invert(1)' }} />
+          </div>
+          <div style={{ fontSize:24, fontWeight:700, color:'#FFFFFF', lineHeight:1.3, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>Sistem Informasi<br />RUPTL PLN</div>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, textShadow:'0 1px 4px rgba(0,0,0,0.4)' }}>Monitoring &amp; pelaporan proyek<br />ketenagalistrikan nasional 2024–2033</div>
         </div>
       </div>
     </div>

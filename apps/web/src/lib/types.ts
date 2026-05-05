@@ -77,7 +77,7 @@ export const URGENCY_OPTIONS = [
 
 export const URGENCY_COLORS: Record<string, string> = {
   'Kehandalan Sistem': '#008BA0',
-  'RUPTL':             '#F9FAFB',
+  'RUPTL':             '#64748B',
   'Penurunan BPP':     '#F59E0B',
   'Pemenuhan EBT':     '#10B981',
   'Kerawanan Sistem':  '#EF4444',
