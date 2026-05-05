@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProjectStatsProvider } from './context/ProjectStatsContext';
+import { ThemeProvider, useColors } from './context/ThemeContext';
 import { Role } from './lib/types';
 import LoginPage     from './pages/LoginPage';
 import MapPage       from './pages/MapPage';
@@ -12,8 +13,9 @@ import NavBar        from './components/NavBar';
 
 function Protected({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { user, loading } = useAuth();
+  const c = useColors();
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#0B1220', color:'#4B5563', fontSize:13 }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:c.bgPage, color:c.textMuted, fontSize:13 }}>
       Memuat…
     </div>
   );
@@ -23,8 +25,9 @@ function Protected({ children, roles }: { children: ReactNode; roles?: Role[] })
 }
 
 function Layout({ children }: { children: ReactNode }) {
+  const c = useColors();
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:'#0B1220' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:c.bgPage }}>
       <NavBar />
       {children}
     </div>
@@ -33,6 +36,7 @@ function Layout({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <ProjectStatsProvider>
     <AuthProvider>
       <BrowserRouter>
@@ -55,5 +59,6 @@ export default function App() {
       </BrowserRouter>
     </AuthProvider>
     </ProjectStatsProvider>
+    </ThemeProvider>
   );
 }

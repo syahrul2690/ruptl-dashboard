@@ -5,11 +5,21 @@ body {
   background: #0B1220;
   color: #F9FAFB;
   -webkit-font-smoothing: antialiased;
+  transition: background 200ms, color 200ms;
 }
+[data-theme="simpp"] body {
+  background: #EAF2F8;
+  color: #1A2F3D;
+}
+/* Scrollbars — dark */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 ::-webkit-scrollbar-track { background: #111827; }
 ::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+/* Scrollbars — SIMPP light */
+[data-theme="simpp"] ::-webkit-scrollbar-track { background: #DDE8F0; }
+[data-theme="simpp"] ::-webkit-scrollbar-thumb { background: #A8C0D0; }
+[data-theme="simpp"] ::-webkit-scrollbar-thumb:hover { background: #7DA5BA; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 @keyframes spin   { to { transform: rotate(360deg); } }

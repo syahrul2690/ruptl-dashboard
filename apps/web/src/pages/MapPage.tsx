@@ -5,6 +5,7 @@ import FilterBar, { ProjectCounts } from '../components/FilterBar';
 import MapPanel from '../components/MapPanel';
 import DetailPanel from '../components/DetailPanel';
 import { useProjectStats } from '../context/ProjectStatsContext';
+import { useColors } from '../context/ThemeContext';
 
 export default function MapPage() {
   const { setCounts } = useProjectStats();
@@ -17,8 +18,8 @@ export default function MapPage() {
   const [activeStatuses,  setActiveStatuses]  = useState<ProjectStatus[]>([]);
   const [searchQuery,     setSearchQuery]     = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
+  const c = useColors();
 
-  // Fetch slim project list on mount
   useEffect(() => {
     setLoadingMap(true);
     projectsApi.listSlim()
@@ -43,26 +44,15 @@ export default function MapPage() {
     }
   }, [selectedProject]);
 
-  // After an inline edit, update the full selected project AND patch the slim list
   const handleProjectUpdated = useCallback((updated: Project) => {
     setSelectedProject(updated);
     setProjects(prev => prev.map(p =>
       p.id === updated.id
-        ? {
-            ...p,
-            status:          updated.status,
-            issueType:       updated.issueType,
-            urgencyCategory: updated.urgencyCategory,
-            lat:             updated.lat,
-            lng:             updated.lng,
-            lineFromId:      updated.lineFromId,
-            lineToId:        updated.lineToId,
-          }
+        ? { ...p, status: updated.status, issueType: updated.issueType, urgencyCategory: updated.urgencyCategory, lat: updated.lat, lng: updated.lng, lineFromId: updated.lineFromId, lineToId: updated.lineToId }
         : p
     ));
   }, []);
 
-  // After delete, remove from slim list and deselect
   const handleProjectDeleted = useCallback((id: string) => {
     setSelectedProject(null);
     setProjects(prev => prev.filter(p => p.id !== id));
@@ -91,7 +81,6 @@ export default function MapPage() {
     };
   }, [projects, activeFilters, activeProvinces, activeStatuses]);
 
-  // Sync counts to NavBar via context
   useEffect(() => { setCounts(projectCounts); }, [projectCounts, setCounts]);
 
   const searchResults = useMemo(() => {
@@ -126,11 +115,11 @@ export default function MapPage() {
       {/* Map + Detail panel row */}
       <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
         {/* Map area */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden', borderRight:'1px solid #1F2937', position:'relative' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden', borderRight:`1px solid ${c.border}`, position:'relative' }}>
           {loadingMap && (
-            <div style={{ position:'absolute', inset:0, zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(11,18,32,0.7)', flexDirection:'column', gap:10 }}>
-              <div style={{ width:24, height:24, border:'2px solid #374151', borderTopColor:'#0E91A5', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-              <span style={{ fontSize:12, color:'#4B5563' }}>Memuat peta…</span>
+            <div style={{ position:'absolute', inset:0, zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', background:`${c.bgPage}CC`, flexDirection:'column', gap:10 }}>
+              <div style={{ width:24, height:24, border:`2px solid ${c.spinnerBdr}`, borderTopColor:c.spinnerTop, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+              <span style={{ fontSize:12, color:c.textMuted }}>Memuat peta…</span>
             </div>
           )}
           <MapPanel
@@ -145,10 +134,10 @@ export default function MapPage() {
         </div>
 
         {/* Right panel: search + detail */}
-        <div style={{ width:400, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#111827' }}>
+        <div style={{ width:400, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:c.bgCard }}>
 
           {/* ── Search bar ── */}
-          <div ref={searchRef} style={{ padding:'10px 12px', borderBottom:'1px solid #1F2937', flexShrink:0, position:'relative' }}>
+          <div ref={searchRef} style={{ padding:'10px 12px', borderBottom:`1px solid ${c.border}`, flexShrink:0, position:'relative' }}>
             <input
               type="text"
               value={searchQuery}
@@ -157,38 +146,37 @@ export default function MapPage() {
               placeholder="Cari nama proyek atau provinsi…"
               style={{
                 width:'100%', boxSizing:'border-box',
-                background:'#0D1526', border:'1px solid #374151', borderRadius:6,
-                padding:'7px 32px 7px 10px', fontSize:12, color:'#E5E7EB',
+                background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:6,
+                padding:'7px 32px 7px 10px', fontSize:12, color:c.textPrimary,
                 fontFamily:'inherit', outline:'none',
               }}
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} style={{
                 position:'absolute', right:20, top:'50%', transform:'translateY(-50%)',
-                background:'none', border:'none', color:'#6B7280', cursor:'pointer', fontSize:16, lineHeight:1, padding:2,
+                background:'none', border:'none', color:c.textMuted, cursor:'pointer', fontSize:16, lineHeight:1, padding:2,
               }}>×</button>
             )}
 
-            {/* Results dropdown */}
             {searchResults.length > 0 && (
               <div style={{
                 position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
-                background:'#111827', border:'1px solid #374151', borderRadius:6,
-                boxShadow:'0 8px 24px rgba(0,0,0,0.6)', maxHeight:320, overflowY:'auto',
+                background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6,
+                boxShadow:'0 8px 24px rgba(0,0,0,0.15)', maxHeight:320, overflowY:'auto',
               }}>
                 {searchResults.map(p => {
                   const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
                   return (
                     <div key={p.id} onClick={() => handleSearchSelect(p)} style={{
-                      padding:'9px 12px', cursor:'pointer', borderBottom:'1px solid #1F2937',
+                      padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${c.border}`,
                       display:'flex', alignItems:'center', gap:10,
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#1F2937')}
+                    onMouseEnter={e => (e.currentTarget.style.background = c.hoverBg)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                       <span style={{ width:8, height:8, borderRadius:'50%', background:cfg.color, flexShrink:0 }} />
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:12, fontWeight:500, color:'#E5E7EB', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                        <div style={{ fontSize:10, color:'#4B5563', marginTop:1 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
+                        <div style={{ fontSize:12, fontWeight:500, color:c.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                        <div style={{ fontSize:10, color:c.textMuted, marginTop:1 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
                       </div>
                     </div>
                   );
@@ -199,8 +187,8 @@ export default function MapPage() {
             {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
               <div style={{
                 position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
-                background:'#111827', border:'1px solid #374151', borderRadius:6,
-                padding:'12px', fontSize:12, color:'#4B5563', textAlign:'center',
+                background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6,
+                padding:'12px', fontSize:12, color:c.textMuted, textAlign:'center',
               }}>Tidak ada proyek ditemukan</div>
             )}
           </div>
@@ -218,29 +206,28 @@ export default function MapPage() {
       </div>
 
       {/* Status bar */}
-      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'5px 20px', background:'#0D1526', borderTop:'1px solid #1F2937', flexShrink:0, flexWrap:'wrap' }}>
-        <span style={{ fontSize:10, color:'#4B5563', display:'flex', alignItems:'center', gap:5 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'5px 20px', background:c.statusBar, borderTop:`1px solid ${c.border}`, flexShrink:0, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:c.textMuted, display:'flex', alignItems:'center', gap:5 }}>
           <span style={{ width:6, height:6, borderRadius:'50%', background:'#10B981', boxShadow:'0 0 6px #10B981', animation:'pulse 2s infinite', display:'inline-block' }} />
           System Online
         </span>
-        {/* Voltage legend */}
         {[
           { color: '#F97316', label: 'SUTET 500 kV' },
           { color: '#A855F7', label: 'SUTT 275 kV'  },
           { color: '#38BDF8', label: 'SUTT 150 kV'  },
           { color: '#4ADE80', label: 'SUTT 70 kV'   },
         ].map(v => (
-          <span key={v.label} style={{ fontSize:10, color:'#4B5563', display:'flex', alignItems:'center', gap:4 }}>
+          <span key={v.label} style={{ fontSize:10, color:c.textMuted, display:'flex', alignItems:'center', gap:4 }}>
             <span style={{ display:'inline-block', width:16, height:2, background:v.color, borderRadius:1 }} />
             {v.label}
           </span>
         ))}
-        <span style={{ fontSize:10, color:'#4B5563' }}>
+        <span style={{ fontSize:10, color:c.textMuted }}>
           {(activeFilters.length > 0 || activeProvinces.length > 0 || activeStatuses.length > 0)
             ? `Filter aktif: ${[...activeStatuses.map(s => STATUS_CONFIG[s].label), ...activeProvinces, ...activeFilters].join(' · ')}`
             : `Menampilkan ${projects.length} proyek · Klik node untuk detail`}
         </span>
-        <span style={{ fontSize:10, color:'#4B5563', marginLeft:'auto' }}>RUPTL 2024–2033 · PLN Pusat</span>
+        <span style={{ fontSize:10, color:c.textMuted, marginLeft:'auto' }}>RUPTL 2024–2033 · PLN Pusat</span>
       </div>
     </div>
   );

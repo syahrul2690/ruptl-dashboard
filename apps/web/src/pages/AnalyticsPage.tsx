@@ -1,5 +1,6 @@
 import { useEffect, useState, CSSProperties, useCallback } from 'react';
 import { analyticsApi } from '../lib/api';
+import { useColors, useTheme } from '../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Summary {
@@ -10,22 +11,21 @@ interface Summary {
   byProvince: { province: string; count: number }[];
   byTrack:    { energized: number; idle: number; delayed: number; on_track: number };
   capacity:   { total_mw: number; total_mva: number; total_km: number };
-  // Per province
   mwByProvince:  { province:  string; value: number }[];
   kmByProvince:  { province:  string; value: number }[];
-  // Per grid system
   mwByGrid:      { gridSystem: string; value: number }[];
   mvaByGrid:     { gridSystem: string; value: number }[];
   kmByGrid:      { gridSystem: string; value: number }[];
 }
 
-// ── Donut Chart (SVG) ─────────────────────────────────────────────────────────
+// ── Donut Chart ───────────────────────────────────────────────────────────────
 function DonutChart({ data, colors, size = 130, hole = 0.62 }: {
   data: { label: string; value: number }[];
   colors: string[];
   size?: number;
   hole?: number;
 }) {
+  const c = useColors();
   const total = data.reduce((s, d) => s + (d.value || 0), 0);
   if (!total) return <div style={{ width: size, height: size, flexShrink: 0 }} />;
 
@@ -51,8 +51,8 @@ function DonutChart({ data, colors, size = 130, hole = 0.62 }: {
         {slices.map((s, i) => <path key={i} d={s.path} fill={s.color} opacity={0.9} />)}
       </svg>
       <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-        <div style={{ fontSize:22, fontWeight:800, color:'#F9FAFB', lineHeight:1 }}>{total}</div>
-        <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', color:'#4B5563', textTransform:'uppercase', marginTop:2 }}>Total</div>
+        <div style={{ fontSize:22, fontWeight:800, color:c.textPrimary, lineHeight:1 }}>{total}</div>
+        <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', color:c.textMuted, textTransform:'uppercase', marginTop:2 }}>Total</div>
       </div>
     </div>
   );
@@ -67,8 +67,9 @@ function HBar({ rows, color, unit, emptyText = 'Tidak ada data', initialLimit = 
   initialLimit?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const c = useColors();
   if (!rows.length) {
-    return <div style={{ fontSize:12, color:'#374151', padding:'20px 0', textAlign:'center' }}>{emptyText}</div>;
+    return <div style={{ fontSize:12, color:c.textMuted, padding:'20px 0', textAlign:'center' }}>{emptyText}</div>;
   }
   const visible = expanded ? rows : rows.slice(0, initialLimit);
   const max = Math.max(...rows.map(r => r.value), 1);
@@ -78,12 +79,12 @@ function HBar({ rows, color, unit, emptyText = 'Tidak ada data', initialLimit = 
       {visible.map((row, i) => (
         <div key={i}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-            <span style={{ fontSize:11, color:'#9CA3AF', maxWidth:'60%', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{row.label}</span>
+            <span style={{ fontSize:11, color:c.textSec, maxWidth:'60%', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{row.label}</span>
             <span style={{ fontSize:11, fontWeight:700, color, fontFamily:'monospace' }}>
               {row.value.toLocaleString('id-ID')} {unit}
             </span>
           </div>
-          <div style={{ height:7, background:'#1F2937', borderRadius:4, overflow:'hidden' }}>
+          <div style={{ height:7, background:c.hbarTrack, borderRadius:4, overflow:'hidden' }}>
             <div style={{ height:'100%', width:`${(row.value/max)*100}%`, background:color, borderRadius:4, transition:'width 600ms ease', opacity:0.85 }} />
           </div>
         </div>
@@ -91,7 +92,7 @@ function HBar({ rows, color, unit, emptyText = 'Tidak ada data', initialLimit = 
       {hasMore && (
         <button onClick={() => setExpanded(e => !e)} style={{
           marginTop:4, padding:'5px 0', background:'none', border:'none', cursor:'pointer',
-          fontSize:11, color:'#4B5563', fontFamily:'inherit', textAlign:'left',
+          fontSize:11, color:c.textMuted, fontFamily:'inherit', textAlign:'left',
         }}>
           {expanded ? '▲ Sembunyikan' : `▼ Lihat semua (${rows.length - initialLimit} lainnya)`}
         </button>
@@ -102,12 +103,13 @@ function HBar({ rows, color, unit, emptyText = 'Tidak ada data', initialLimit = 
 
 // ── Legend ────────────────────────────────────────────────────────────────────
 function Legend({ items }: { items: { label: string; value: number; color: string }[] }) {
+  const c = useColors();
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
       {items.map((item, i) => (
         <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
           <div style={{ width:10, height:10, borderRadius:2, background:item.color, flexShrink:0, boxShadow:`0 0 4px ${item.color}60` }} />
-          <span style={{ fontSize:11, color:'#9CA3AF', flex:1 }}>{item.label}</span>
+          <span style={{ fontSize:11, color:c.textSec, flex:1 }}>{item.label}</span>
           <span style={{ fontSize:12, fontWeight:700, color:item.color, fontFamily:'monospace' }}>{item.value}</span>
         </div>
       ))}
@@ -116,45 +118,54 @@ function Legend({ items }: { items: { label: string; value: number; color: strin
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, unit, color, sub }: {
-  label: string; value: number | string; unit?: string; color: string; sub?: string;
+function KpiCard({ label, value, unit, color, sub, highlight }: {
+  label: string; value: number | string; unit?: string; color: string; sub?: string; highlight?: boolean;
 }) {
+  const c = useColors();
+  const { isDark } = useTheme();
+  const bg    = highlight && !isDark ? '#F6A821' : c.bgCard;
+  const txtLbl= highlight && !isDark ? 'rgba(255,255,255,0.75)' : c.textMuted;
+  const txtSub= highlight && !isDark ? 'rgba(255,255,255,0.65)' : c.textMuted;
+  const bdr   = highlight && !isDark ? '#F6A821' : c.border;
+  const valC  = highlight && !isDark ? '#FFFFFF' : color;
+  const unitC = highlight && !isDark ? 'rgba(255,255,255,0.8)' : c.textSec;
   return (
-    <div style={a.kpiCard}>
-      <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.07em', textTransform:'uppercase', color:'#4B5563', marginBottom:8 }}>{label}</div>
+    <div style={{ background:bg, border:`1px solid ${bdr}`, borderRadius:8, padding:'16px 18px' }}>
+      <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.07em', textTransform:'uppercase', color:txtLbl, marginBottom:8 }}>{label}</div>
       <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
-        <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
-        {unit && <div style={{ fontSize:13, fontWeight:600, color:'#6B7280' }}>{unit}</div>}
+        <div style={{ fontSize:28, fontWeight:800, color:valC, lineHeight:1 }}>{value}</div>
+        {unit && <div style={{ fontSize:13, fontWeight:600, color:unitC }}>{unit}</div>}
       </div>
-      {sub && <div style={{ fontSize:10, color:'#4B5563', marginTop:4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:10, color:txtSub, marginTop:4 }}>{sub}</div>}
     </div>
   );
 }
 
-// ── Chart Card wrapper ────────────────────────────────────────────────────────
+// ── Chart Card ────────────────────────────────────────────────────────────────
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const c = useColors();
   return (
-    <div style={a.chartCard}>
+    <div style={{ background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:8, padding:'18px 20px' }}>
       <div style={{ marginBottom:14 }}>
-        <div style={{ fontSize:12, fontWeight:700, color:'#E5E7EB' }}>{title}</div>
-        {subtitle && <div style={{ fontSize:10, color:'#4B5563', marginTop:2 }}>{subtitle}</div>}
+        <div style={{ fontSize:12, fontWeight:700, color:c.textPrimary }}>{title}</div>
+        {subtitle && <div style={{ fontSize:10, color:c.textMuted, marginTop:2 }}>{subtitle}</div>}
       </div>
       {children}
     </div>
   );
 }
 
-// ── Section divider ───────────────────────────────────────────────────────────
+// ── Section header ────────────────────────────────────────────────────────────
 function SectionHeader({ title }: { title: string }) {
+  const c = useColors();
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:4 }}>
-      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#4B5563', whiteSpace:'nowrap' }}>{title}</div>
-      <div style={{ flex:1, height:1, background:'#1F2937' }} />
+      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:c.textMuted, whiteSpace:'nowrap' }}>{title}</div>
+      <div style={{ flex:1, height:1, background:c.divider }} />
     </div>
   );
 }
 
-// ── Helper: label maps ────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
   ENERGIZED: 'Energized', CONSTRUCTION: 'Construction', PRE_CONSTRUCTION: 'Pre-Construction',
 };
@@ -167,6 +178,7 @@ export default function AnalyticsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const c = useColors();
 
   useEffect(() => {
     analyticsApi.summary()
@@ -176,14 +188,14 @@ export default function AnalyticsPage() {
   }, []);
 
   if (loading) return (
-    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:'#4B5563' }}>
-      <div style={{ width:24, height:24, border:'2px solid #374151', borderTopColor:'#0E91A5', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:c.textMuted, background:c.bgPage }}>
+      <div style={{ width:24, height:24, border:`2px solid ${c.spinnerBdr}`, borderTopColor:c.spinnerTop, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
       <span style={{ fontSize:12 }}>Memuat data analitik…</span>
     </div>
   );
 
   if (error || !summary) return (
-    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', color:'#EF4444', fontSize:13 }}>{error || 'Tidak ada data'}</div>
+    <div style={{ display:'flex', flex:1, alignItems:'center', justifyContent:'center', color:'#EF4444', fontSize:13, background:c.bgPage }}>{error || 'Tidak ada data'}</div>
   );
 
   const {
@@ -204,36 +216,34 @@ export default function AnalyticsPage() {
   const provinceRows    = byProvince.map(p => ({ label: p.province,  value: p.count }));
   const mwProvinceRows  = mwByProvince.map(r => ({ label: r.province,  value: r.value }));
   const kmProvinceRows  = kmByProvince.map(r => ({ label: r.province,  value: r.value }));
-
-  // Per-grid rows
   const mwGridRows      = mwByGrid.map(r  => ({ label: r.gridSystem, value: r.value }));
   const mvaGridRows     = mvaByGrid.map(r => ({ label: r.gridSystem, value: r.value }));
   const kmGridRows      = kmByGrid.map(r  => ({ label: r.gridSystem, value: r.value }));
 
   return (
-    <div style={a.page}>
+    <div style={{ flex:1, overflowY:'auto', background:c.bgPage, padding:'24px', display:'flex', flexDirection:'column', gap:16 }}>
       {/* Page header */}
       <div>
-        <div style={{ fontSize:20, fontWeight:700, color:'#F9FAFB', marginBottom:4 }}>Ringkasan Proyek RUPTL</div>
-        <div style={{ fontSize:12, color:'#6B7280' }}>Statistik dan visualisasi seluruh proyek infrastruktur ketenagalistrikan nasional</div>
+        <div style={{ fontSize:20, fontWeight:700, color:c.textPrimary, marginBottom:4 }}>Ringkasan Proyek RUPTL</div>
+        <div style={{ fontSize:12, color:c.textSec }}>Statistik dan visualisasi seluruh proyek infrastruktur ketenagalistrikan nasional</div>
       </div>
 
       {/* ── KPI row ── */}
-      <div style={a.kpiRow}>
-        <KpiCard label="Total Proyek"    value={total}
-          color="#F9FAFB"  sub={`${byTrack.energized} Energized · ${byStatus.find(s=>s.status==='CONSTRUCTION')?.count??0} Construction`} />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
+        <KpiCard label="Total Proyek" value={total} color={c.textPrimary} highlight
+          sub={`${byTrack.energized} Energized · ${byStatus.find(s=>s.status==='CONSTRUCTION')?.count??0} Construction`} />
         <KpiCard label="Total Kapasitas" value={Math.round(+capacity.total_mw)}  unit="MW"
           color="#10B981"  sub="Pembangkit (Power Plant)" />
-        <KpiCard label="Panjang Jaringan"value={Math.round(+capacity.total_km)}  unit="km"
+        <KpiCard label="Panjang Jaringan" value={Math.round(+capacity.total_km)}  unit="km"
           color="#3B82F6"  sub="Transmisi SUTT & SUTET" />
         <KpiCard label="Kapasitas Gardu" value={Math.round(+capacity.total_mva)} unit="MVA"
           color="#0E91A5"  sub="Gardu Induk (Substation)" />
-        <KpiCard label="Proyek Terlambat"value={byTrack.delayed}
+        <KpiCard label="Proyek Terlambat" value={byTrack.delayed}
           color="#EF4444"  sub={`dari ${total} total proyek`} />
       </div>
 
       {/* ── Donut row ── */}
-      <div style={a.triRow}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
         <ChartCard title="Status Proyek" subtitle="Tahap pelaksanaan">
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
             <DonutChart data={statusData} colors={['#3B82F6','#F59E0B','#10B981']} size={130} />
@@ -256,9 +266,8 @@ export default function AnalyticsPage() {
         </ChartCard>
       </div>
 
-      {/* ── Per Pulau & Provinsi (count) ── */}
       <SectionHeader title="Distribusi Jumlah Proyek" />
-      <div style={a.biRow}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
         <ChartCard title="Proyek per Pulau" subtitle="Jumlah proyek">
           <HBar rows={islandRows} color="#0E91A5" unit="proyek" />
         </ChartCard>
@@ -267,44 +276,28 @@ export default function AnalyticsPage() {
         </ChartCard>
       </div>
 
-      {/* ── Capacity / length per province ── */}
       <SectionHeader title="Distribusi per Provinsi" />
-      <div style={a.biRow}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
         <ChartCard title="Kapasitas Pembangkit per Provinsi" subtitle="Total MW · Power Plant">
-          <HBar rows={mwProvinceRows} color="#10B981" unit="MW"
-            emptyText="Belum ada data kapasitas pembangkit" />
+          <HBar rows={mwProvinceRows} color="#10B981" unit="MW" emptyText="Belum ada data kapasitas pembangkit" />
         </ChartCard>
         <ChartCard title="Panjang Transmisi per Provinsi" subtitle="Total km · Transmission Line">
-          <HBar rows={kmProvinceRows} color="#3B82F6" unit="km"
-            emptyText="Belum ada data panjang transmisi" />
+          <HBar rows={kmProvinceRows} color="#3B82F6" unit="km" emptyText="Belum ada data panjang transmisi" />
         </ChartCard>
       </div>
 
-      {/* ── Capacity / length per grid system ── */}
       <SectionHeader title="Distribusi per Sistem Grid" />
-      <div style={a.triRow}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
         <ChartCard title="Kapasitas Pembangkit per Sistem Grid" subtitle="Total MW · Power Plant">
-          <HBar rows={mwGridRows} color="#10B981" unit="MW"
-            emptyText="Belum ada data kapasitas pembangkit" />
+          <HBar rows={mwGridRows} color="#10B981" unit="MW" emptyText="Belum ada data kapasitas pembangkit" />
         </ChartCard>
         <ChartCard title="Kapasitas Transformator per Sistem Grid" subtitle="Total MVA · Substation">
-          <HBar rows={mvaGridRows} color="#0E91A5" unit="MVA"
-            emptyText="Belum ada data kapasitas transformator" />
+          <HBar rows={mvaGridRows} color="#0E91A5" unit="MVA" emptyText="Belum ada data kapasitas transformator" />
         </ChartCard>
         <ChartCard title="Panjang Transmisi per Sistem Grid" subtitle="Total km · Transmission Line">
-          <HBar rows={kmGridRows} color="#3B82F6" unit="km"
-            emptyText="Belum ada data panjang transmisi" />
+          <HBar rows={kmGridRows} color="#3B82F6" unit="km" emptyText="Belum ada data panjang transmisi" />
         </ChartCard>
       </div>
     </div>
   );
 }
-
-const a: Record<string, CSSProperties> = {
-  page:      { flex:1, overflowY:'auto', background:'#0B1220', padding:'24px', display:'flex', flexDirection:'column', gap:16 },
-  kpiRow:    { display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 },
-  kpiCard:   { background:'#111827', border:'1px solid #1F2937', borderRadius:8, padding:'16px 18px' },
-  triRow:    { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 },
-  biRow:     { display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 },
-  chartCard: { background:'#111827', border:'1px solid #1F2937', borderRadius:8, padding:'18px 20px' },
-};
