@@ -38,7 +38,7 @@ export default function LoginPage() {
             <img src="/pln-logo.png" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
           <div style={{ fontSize:20, fontWeight:700, color:c.textPrimary }}>RUPTL Dashboard</div>
-          <div style={{ fontSize:11, color:c.textMuted, marginBottom:20 }}>Perusahaan Listrik Negara · 2024–2033</div>
+          <div style={{ fontSize:11, color:c.textMuted, marginBottom:20 }}>Pusat Manajemen Proyek</div>
 
           <form onSubmit={handleSubmit} style={{ width:'100%', display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
@@ -86,7 +86,7 @@ export default function LoginPage() {
           </div>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#1B3A4B', lineHeight:1.2 }}>RUPTL Dashboard</div>
-            <div style={{ fontSize:10, color:'#8EA8BB' }}>Perusahaan Listrik Negara · 2024–2033</div>
+            <div style={{ fontSize:10, color:'#8EA8BB' }}>Pusat Manajemen Proyek</div>
           </div>
         </div>
 
@@ -136,8 +136,8 @@ export default function LoginPage() {
           <div style={{ width:108, height:108, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'2px solid rgba(255,255,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 32px rgba(0,0,0,0.35)', backdropFilter:'blur(8px)', padding:14 }}>
             <img src="/pln-logo.png" alt="PLN" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
           </div>
-          <div style={{ fontSize:24, fontWeight:700, color:'#FFFFFF', lineHeight:1.3, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>Sistem Informasi<br />RUPTL PLN</div>
-          <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, textShadow:'0 1px 4px rgba(0,0,0,0.4)' }}>Monitoring &amp; pelaporan proyek<br />ketenagalistrikan nasional 2024–2033</div>
+          <div style={{ fontSize:24, fontWeight:700, color:'#FFFFFF', lineHeight:1.3, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>RUPTL Dashboard</div>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, textShadow:'0 1px 4px rgba(0,0,0,0.4)' }}>Pusat Manajemen Proyek<br />Monitoring &amp; pelaporan proyek ketenagalistrikan</div>
         </div>
       </div>
     </div>
