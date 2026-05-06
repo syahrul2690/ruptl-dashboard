@@ -8,7 +8,7 @@ const ThemeContext = createContext<ThemeCtx>({ theme: 'dark', toggleTheme: () =>
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() =>
-    (localStorage.getItem('ruptl-theme') as Theme) ?? 'dark'
+    (localStorage.getItem('ruptl-theme') as Theme) ?? 'simpp'
   );
 
   useEffect(() => {
