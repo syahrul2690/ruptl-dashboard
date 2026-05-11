@@ -28,8 +28,11 @@ export default function MapPage() {
       .finally(() => setLoadingMap(false));
   }, []);
 
+  const selectedRef = useRef(selectedProject);
+  useEffect(() => { selectedRef.current = selectedProject; }, [selectedProject]);
+
   const handleSelectProject = useCallback(async (slim: ProjectSlim) => {
-    if (selectedProject?.id === slim.id) {
+    if (selectedRef.current?.id === slim.id) {
       setSelectedProject(null);
       return;
     }
@@ -42,7 +45,7 @@ export default function MapPage() {
     } finally {
       setLoadingDetail(false);
     }
-  }, [selectedProject]);
+  }, []);
 
   const handleProjectUpdated = useCallback((updated: Project) => {
     setSelectedProject(updated);
@@ -64,21 +67,21 @@ export default function MapPage() {
   }, [selectedProject]);
 
   const projectCounts = useMemo((): ProjectCounts => {
-    const visible = projects.filter(p => {
-      const statusOk   = activeStatuses.length  === 0 || activeStatuses.includes(p.status);
-      const urgencyOk  = activeFilters.length   === 0 || p.urgencyCategory.some(u => activeFilters.includes(u));
-      const provinceOk = activeProvinces.length === 0 || activeProvinces.includes(p.province);
-      return statusOk && urgencyOk && provinceOk;
-    });
-    return {
-      total:            visible.length,
-      energized:        visible.filter(p => p.status === 'ENERGIZED').length,
-      construction:     visible.filter(p => p.status === 'CONSTRUCTION').length,
-      preCon:           visible.filter(p => p.status === 'PRE_CONSTRUCTION').length,
-      powerPlant:       visible.filter(p => p.type === 'POWER_PLANT').length,
-      substation:       visible.filter(p => p.type === 'SUBSTATION').length,
-      transmissionLine: visible.filter(p => p.type === 'TRANSMISSION_LINE').length,
-    };
+    let total = 0, energized = 0, construction = 0, preCon = 0;
+    let powerPlant = 0, substation = 0, transmissionLine = 0;
+    for (const p of projects) {
+      if (activeStatuses.length && !activeStatuses.includes(p.status)) continue;
+      if (activeFilters.length && !p.urgencyCategory.some(u => activeFilters.includes(u))) continue;
+      if (activeProvinces.length && !activeProvinces.includes(p.province)) continue;
+      total++;
+      if (p.status === 'ENERGIZED') energized++;
+      else if (p.status === 'CONSTRUCTION') construction++;
+      else if (p.status === 'PRE_CONSTRUCTION') preCon++;
+      if (p.type === 'POWER_PLANT') powerPlant++;
+      else if (p.type === 'SUBSTATION') substation++;
+      else if (p.type === 'TRANSMISSION_LINE') transmissionLine++;
+    }
+    return { total, energized, construction, preCon, powerPlant, substation, transmissionLine };
   }, [projects, activeFilters, activeProvinces, activeStatuses]);
 
   useEffect(() => { setCounts(projectCounts); }, [projectCounts, setCounts]);

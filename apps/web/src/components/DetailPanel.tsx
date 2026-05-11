@@ -626,8 +626,13 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
     finally { setDeleting(false); }
   };
 
-  const prevId = project?.id;
-  if (mode === 'edit' && project?.id !== prevId) setMode('view');
+  const prevIdRef = useRef(project?.id);
+  useEffect(() => {
+    if (project?.id !== prevIdRef.current) {
+      setMode('view');
+      prevIdRef.current = project?.id;
+    }
+  }, [project?.id]);
 
   if (loading) {
     return (

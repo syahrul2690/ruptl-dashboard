@@ -86,8 +86,16 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
   const clusterRef    = useRef<L.MarkerClusterGroup | null>(null);
-  const linesRef      = useRef<L.Layer[]>([]);
-  const labelsRef     = useRef<L.Layer[]>([]);
+  const markerMapRef  = useRef<Map<string, L.Marker>>(new Map());
+  const lineMapRef    = useRef<Map<string, { poly: L.Polyline; glow?: L.Polyline; label: L.Marker }>>(new Map());
+  const projectMapRef = useRef<Map<string, ProjectSlim>>(new Map());
+  const filtersRef    = useRef({ activeFilters, activeProvinces, activeStatuses });
+  const onSelectRef   = useRef(onSelectProject);
+
+  // Keep refs in sync without causing effect re-runs
+  projectMapRef.current = new Map(projects.map(p => [p.id, p]));
+  filtersRef.current = { activeFilters, activeProvinces, activeStatuses };
+  onSelectRef.current = onSelectProject;
 
   // Init map once
   useEffect(() => {
@@ -120,7 +128,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
     return () => ro.disconnect();
   }, []);
 
-  // Redraw overlays when data/filters/selection change
+  // Full rebuild when data or filters change
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -130,19 +138,20 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       map.removeLayer(clusterRef.current);
       clusterRef.current = null;
     }
-    linesRef.current.forEach(l => map.removeLayer(l));
-    labelsRef.current.forEach(l => map.removeLayer(l));
-    linesRef.current = [];
-    labelsRef.current = [];
-
-    const byId = new Map(projects.map(p => [p.id, p]));
+    lineMapRef.current.forEach(obj => {
+      map.removeLayer(obj.poly);
+      if (obj.glow) map.removeLayer(obj.glow);
+      map.removeLayer(obj.label);
+    });
+    lineMapRef.current.clear();
+    markerMapRef.current.clear();
 
     // ── Transmission lines (drawn below markers) ─────────────────────
     projects
       .filter(p => p.type === 'TRANSMISSION_LINE' && p.lineFromId && p.lineToId && p.lineFromId !== p.lineToId)
       .forEach(line => {
-        const from = byId.get(line.lineFromId!);
-        const to   = byId.get(line.lineToId!);
+        const from = projectMapRef.current.get(line.lineFromId!);
+        const to   = projectMapRef.current.get(line.lineToId!);
         if (!from || !to || from.lat == null || from.lng == null || to.lat == null || to.lng == null) return;
 
         const visible  = isVisible(line, activeFilters, activeProvinces, activeStatuses);
@@ -154,15 +163,15 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         const dash     = line.status !== 'ENERGIZED' ? '8,5' : undefined;
         const latlngs: L.LatLngTuple[] = [[from.lat, from.lng], [to.lat, to.lng]];
 
+        let glow: L.Polyline | undefined;
         if (isSel || isHl) {
-          const glow = L.polyline(latlngs, { color, weight: weight + 7, opacity: 0.18, dashArray: dash }).addTo(map);
-          linesRef.current.push(glow);
+          glow = L.polyline(latlngs, { color, weight: weight + 7, opacity: 0.18, dashArray: dash }).addTo(map);
         }
         const poly = L.polyline(latlngs, { color, weight, opacity, dashArray: dash }).addTo(map);
-        poly.on('click', () => onSelectProject(line));
-        poly.on('mouseover', () => poly.setStyle({ weight: weight + 2 }));
-        poly.on('mouseout',  () => poly.setStyle({ weight }));
-        linesRef.current.push(poly);
+        (poly as any).baseWeight = weight;
+        poly.on('click', () => onSelectRef.current(line));
+        poly.on('mouseover', () => poly.setStyle({ weight: (poly as any).baseWeight + 2 }));
+        poly.on('mouseout',  () => poly.setStyle({ weight: (poly as any).baseWeight }));
 
         // Mid-point label
         const mid: L.LatLngTuple = [(from.lat! + to.lat!) / 2, (from.lng! + to.lng!) / 2];
@@ -172,7 +181,8 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           iconAnchor: [30, 8],
         });
         const lbl = L.marker(mid, { icon: lblIcon, interactive: false, zIndexOffset: -100 }).addTo(map);
-        labelsRef.current.push(lbl);
+
+        lineMapRef.current.set(line.id, { poly, glow, label: lbl });
       });
 
     // ── Point markers (clustered) ─────────────────────────────────────
@@ -215,7 +225,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           zIndexOffset:  isSel ? 1000 : 0,
         });
 
-        marker.on('click', () => onSelectProject(p));
+        marker.on('click', () => onSelectRef.current(p));
         marker.bindTooltip(tooltipHtml(p), {
           direction: 'top',
           offset: [0, -(sz / 2 + 4)],
@@ -223,13 +233,76 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           className: 'pln-tooltip',
         });
 
+        markerMapRef.current.set(p.id, marker);
         cluster.addLayer(marker);
       });
 
     map.addLayer(cluster);
     clusterRef.current = cluster;
     console.log(`[MapPanel] drew ${projects.filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat != null).length} markers, ${projects.filter(p => p.type === 'TRANSMISSION_LINE').length} lines`);
-  }, [projects, selectedId, highlightedIds, activeFilters, activeProvinces, activeStatuses]);
+  }, [projects, activeFilters, activeProvinces, activeStatuses]);
+
+  // Lightweight update when only selection/highlight changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const filters = filtersRef.current;
+
+    // Update lines
+    lineMapRef.current.forEach((obj, id) => {
+      const line = projectMapRef.current.get(id);
+      if (!line) return;
+      const isSel = id === selectedId;
+      const isHl = highlightedIds.includes(id);
+      const visible = isVisible(line, filters.activeFilters, filters.activeProvinces, filters.activeStatuses);
+      const color = lineVoltageColor(line.subtype);
+      const baseWeight = isSel ? 4.5 : isHl ? 3.5 : 2.5;
+      const opacity = visible ? 1 : 0.06;
+      const dash = line.status !== 'ENERGIZED' ? '8,5' : undefined;
+
+      obj.poly.setStyle({ color, weight: baseWeight, opacity, dashArray: dash });
+      (obj.poly as any).baseWeight = baseWeight;
+
+      if (isSel || isHl) {
+        if (obj.glow) {
+          obj.glow.setStyle({ color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash });
+        } else {
+          const latlngs = obj.poly.getLatLngs() as L.LatLngTuple[];
+          const glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash }).addTo(map);
+          obj.glow = glow;
+        }
+      } else {
+        if (obj.glow) {
+          map.removeLayer(obj.glow);
+          obj.glow = undefined;
+        }
+      }
+    });
+
+    // Update markers
+    markerMapRef.current.forEach((marker, id) => {
+      const p = projectMapRef.current.get(id);
+      if (!p) return;
+      const isSel = id === selectedId;
+      const isHl = highlightedIds.includes(id);
+      const vis = isVisible(p, filters.activeFilters, filters.activeProvinces, filters.activeStatuses);
+      const sz = isSel ? 34 : isHl ? 30 : 26;
+
+      marker.setIcon(L.divIcon({
+        className: '',
+        html: markerHtml(p, isSel, isHl),
+        iconSize: [sz, sz],
+        iconAnchor: [sz / 2, sz / 2],
+      }));
+      marker.setOpacity(vis ? 1 : 0.08);
+      marker.setZIndexOffset(isSel ? 1000 : 0);
+    });
+
+    // Refresh cluster icons if supported
+    if (clusterRef.current && typeof (clusterRef.current as any).refreshClusters === 'function') {
+      (clusterRef.current as any).refreshClusters();
+    }
+  }, [selectedId, highlightedIds]);
 
   // Cleanup on unmount
   useEffect(() => {
