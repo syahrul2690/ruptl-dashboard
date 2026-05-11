@@ -165,7 +165,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
 
         let glow: L.Polyline | undefined;
         if (isSel || isHl) {
-          glow = L.polyline(latlngs, { color, weight: weight + 7, opacity: 0.18, dashArray: dash }).addTo(map);
+          glow = L.polyline(latlngs, { color, weight: weight + 7, opacity: 0.18, dashArray: dash, interactive: false }).addTo(map);
         }
         const poly = L.polyline(latlngs, { color, weight, opacity, dashArray: dash }).addTo(map);
         (poly as any).baseWeight = weight;
@@ -268,7 +268,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           obj.glow.setStyle({ color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash });
         } else {
           const latlngs = obj.poly.getLatLngs() as unknown as L.LatLngTuple[];
-          const glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash }).addTo(map);
+          const glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash, interactive: false }).addTo(map);
           obj.glow = glow;
         }
       } else {
