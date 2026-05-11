@@ -8,6 +8,7 @@ import LoginPage     from './pages/LoginPage';
 import MapPage       from './pages/MapPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import InputPage     from './pages/InputPage';
+import DataProyekPage from './pages/DataProyekPage';
 import AdminPage     from './pages/AdminPage';
 import NavBar        from './components/NavBar';
 
@@ -47,6 +48,9 @@ export default function App() {
           } />
           <Route path="/analytics" element={
             <Protected><Layout><AnalyticsPage /></Layout></Protected>
+          } />
+          <Route path="/data-proyek" element={
+            <Protected><Layout><DataProyekPage /></Layout></Protected>
           } />
           <Route path="/input" element={
             <Protected roles={['ADMIN', 'PIC']}><Layout><InputPage /></Layout></Protected>

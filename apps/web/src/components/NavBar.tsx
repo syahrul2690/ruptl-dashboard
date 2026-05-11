@@ -6,8 +6,9 @@ import { Role } from '../lib/types';
 
 const NAV_ITEMS: { path: string; label: string; roles: Role[] }[] = [
   { path: '/',          label: 'Peta Proyek',  roles: ['ADMIN', 'PIC', 'MANAGEMENT'] },
-  { path: '/analytics', label: 'Ringkasan',    roles: ['ADMIN', 'PIC', 'MANAGEMENT'] },
-  { path: '/input',     label: 'Input Proyek', roles: ['ADMIN', 'PIC'] },
+  { path: '/analytics',   label: 'Ringkasan',    roles: ['ADMIN', 'PIC', 'MANAGEMENT'] },
+  { path: '/data-proyek', label: 'Data Proyek',  roles: ['ADMIN', 'PIC', 'MANAGEMENT'] },
+  { path: '/input',       label: 'Input Proyek', roles: ['ADMIN', 'PIC'] },
   { path: '/admin',     label: 'Admin',        roles: ['ADMIN'] },
 ];
 
