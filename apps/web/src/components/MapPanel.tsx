@@ -267,7 +267,7 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         if (obj.glow) {
           obj.glow.setStyle({ color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash });
         } else {
-          const latlngs = obj.poly.getLatLngs() as L.LatLngTuple[];
+          const latlngs = obj.poly.getLatLngs() as unknown as L.LatLngTuple[];
           const glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash }).addTo(map);
           obj.glow = glow;
         }
