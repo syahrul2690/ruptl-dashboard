@@ -31,6 +31,7 @@ export class ProjectsService {
   async findAll(q: ListProjectsDto) {
     const where: Prisma.ProjectWhereInput = {};
     if (q.status)   where.status   = q.status;
+    if (q.type)     where.type     = q.type;
     if (q.province) where.province = q.province;
     if (q.island)   where.island   = q.island;
     if (q.urgency)  where.urgencyCategory = { has: q.urgency };
@@ -38,6 +39,7 @@ export class ProjectsService {
       where.OR = [
         { name:      { contains: q.search, mode: 'insensitive' } },
         { ruptlCode: { contains: q.search, mode: 'insensitive' } },
+        { province:  { contains: q.search, mode: 'insensitive' } },
       ];
     }
 
@@ -45,11 +47,16 @@ export class ProjectsService {
     const page  = q.page  ?? 1;
     const limit = q.limit ?? 50;
 
+    const SORTABLE = ['name', 'ruptlCode', 'type', 'province', 'status',
+                      'progressPlan', 'progressRealisasi', 'deviasi', 'updatedAt'] as const;
+    const sortField = SORTABLE.includes(q.sort as any) ? q.sort! : 'updatedAt';
+    const sortDir   = q.order === 'asc' ? 'asc' : 'desc';
+
     const [data, total] = await Promise.all([
       this.prisma.project.findMany({
         where,
         select:   slim ? SLIM_SELECT : undefined,
-        orderBy:  { updatedAt: 'desc' },
+        orderBy:  { [sortField]: sortDir },
         skip:     (page - 1) * limit,
         take:     limit,
       }),
