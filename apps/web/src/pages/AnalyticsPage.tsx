@@ -1,14 +1,16 @@
 import { useEffect, useState, CSSProperties, useCallback } from 'react';
 import { analyticsApi } from '../lib/api';
+import { STAGE_CONFIG } from '../lib/types';
 import { useColors, useTheme } from '../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Summary {
   total:      number;
-  byStatus:   { status: string; count: number }[];
-  byType:     { type: string;   count: number }[];
+  byStage:    { stage: string; count: number }[];
+  byType:     { type: string;  count: number }[];
   byIsland:   { island: string; count: number }[];
   byProvince: { province: string; count: number }[];
+  byRegion:   { region: string; count: number }[];
   byTrack:    { energized: number; idle: number; delayed: number; on_track: number };
   capacity:   { total_mw: number; total_mva: number; total_km: number };
   mwByProvince:  { province:  string; value: number }[];
@@ -155,6 +157,36 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
   );
 }
 
+// ── Stage bar — horizontal bars with stage colors ────────────────────────────
+function StageBar({ data }: { data: { label: string; value: number }[] }) {
+  const c = useColors();
+  const stageKeys = Object.keys(STAGE_CONFIG);
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  if (!data.length) return <div style={{ fontSize:11, color:c.textMuted, textAlign:'center', padding:'20px 0' }}>Belum ada data</div>;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      {data.map((row, i) => {
+        const stageKey = stageKeys[i] ?? 'OBC';
+        const color = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG]?.color ?? '#94A3B8';
+        const pct = Math.round((row.value / total) * 100);
+        return (
+          <div key={row.label}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+              <span style={{ fontSize:10, color:c.textSec }}>{row.label}</span>
+              <span style={{ fontSize:11, fontWeight:700, fontFamily:'monospace', color }}>
+                {row.value.toLocaleString('id-ID')} <span style={{ fontSize:9, color:c.textMuted }}>({pct}%)</span>
+              </span>
+            </div>
+            <div style={{ height:6, background:c.hbarTrack, borderRadius:3, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:3, transition:'width 600ms ease', boxShadow:`0 0 4px ${color}60` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHeader({ title }: { title: string }) {
   const c = useColors();
@@ -166,11 +198,14 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  ENERGIZED: 'Energized', CONSTRUCTION: 'Construction', PRE_CONSTRUCTION: 'Pre-Construction',
+const STAGE_LABELS: Record<string, string> = {
+  OBC: '01. OBC', CENTRALIZED_PLANNING: '02. CP', TVV: '03. TVV',
+  KOMITE_INVESTASI: '04. KI', RKAP: '05. RKAP', SKAI: '06. SKAI',
+  RENDAN: '07. RENDAN', LAKDAN: '08. LAKDAN', KONSTRUKSI: '09. Konstruksi', COD: '10. COD',
 };
 const TYPE_LABELS: Record<string, string> = {
-  POWER_PLANT: 'Power Plant', SUBSTATION: 'Substation', TRANSMISSION_LINE: 'Transmission Line',
+  GI: 'Gardu Induk', TRANS: 'Transmisi', KIT: 'KIT',
+  KIT_EBT: 'KIT-EBT', KIT_NONEBT: 'KIT-NONEBT', FSRU: 'FSRU', KIT_RELOKASI: 'KIT (Relokasi)',
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -199,12 +234,12 @@ export default function AnalyticsPage() {
   );
 
   const {
-    total, byStatus, byType, byIsland, byProvince, byTrack, capacity,
+    total, byStage, byType, byIsland, byProvince, byTrack, capacity,
     mwByProvince, kmByProvince, mwByGrid, mvaByGrid, kmByGrid,
   } = summary;
 
-  const statusData = byStatus.map(s => ({ label: STATUS_LABELS[s.status] ?? s.status, value: s.count }));
-  const typeData   = byType.map(t   => ({ label: TYPE_LABELS[t.type]     ?? t.type,   value: t.count }));
+  const stageData = byStage.map(s => ({ label: STAGE_LABELS[s.stage] ?? s.stage, value: s.count }));
+  const typeData  = byType.map(t  => ({ label: TYPE_LABELS[t.type]   ?? t.type,  value: t.count }));
   const trackData  = [
     { label: 'On Track',  value: byTrack.on_track,  color: '#10B981' },
     { label: 'Delayed',   value: byTrack.delayed,   color: '#EF4444' },
@@ -231,7 +266,7 @@ export default function AnalyticsPage() {
       {/* ── KPI row ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
         <KpiCard label="Total Proyek" value={total} color={c.textPrimary} highlight
-          sub={`${byTrack.energized} Energized · ${byStatus.find(s=>s.status==='CONSTRUCTION')?.count??0} Construction`} />
+          sub={`${byTrack.energized} COD · ${byStage.find(s=>s.stage==='KONSTRUKSI')?.count??0} Konstruksi`} />
         <KpiCard label="Total Kapasitas" value={Math.round(+capacity.total_mw)}  unit="MW"
           color="#10B981"  sub="Pembangkit (Power Plant)" />
         <KpiCard label="Panjang Jaringan" value={Math.round(+capacity.total_km)}  unit="km"
@@ -242,26 +277,23 @@ export default function AnalyticsPage() {
           color="#EF4444"  sub={`dari ${total} total proyek`} />
       </div>
 
-      {/* ── Donut row ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
-        <ChartCard title="Status Proyek" subtitle="Tahap pelaksanaan">
-          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <DonutChart data={statusData} colors={['#3B82F6','#F59E0B','#10B981']} size={130} />
-            <Legend items={statusData.map((d,i) => ({ ...d, color: ['#3B82F6','#F59E0B','#10B981'][i] }))} />
-          </div>
+      {/* ── Stage bar + donut row ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:14 }}>
+        <ChartCard title="Stage Proyek" subtitle="Jumlah proyek per tahapan">
+          <StageBar data={stageData} />
         </ChartCard>
 
-        <ChartCard title="Progress Proyek" subtitle="On Track / Delayed / Idle / Energized">
+        <ChartCard title="Progress Proyek" subtitle="On Track / Delayed / Idle / COD">
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <DonutChart data={trackData} colors={trackData.map(t => t.color)} size={130} />
+            <DonutChart data={trackData} colors={trackData.map(t => t.color)} size={120} />
             <Legend items={trackData} />
           </div>
         </ChartCard>
 
         <ChartCard title="Tipe Proyek" subtitle="Jenis infrastruktur">
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <DonutChart data={typeData} colors={['#10B981','#008BA0','#3B82F6']} size={130} />
-            <Legend items={typeData.map((d,i) => ({ ...d, color: ['#10B981','#008BA0','#3B82F6'][i] }))} />
+            <DonutChart data={typeData} colors={['#008BA0','#3B82F6','#10B981','#A78BFA','#F59E0B','#F472B6','#34D399']} size={120} />
+            <Legend items={typeData.map((d,i) => ({ ...d, color: ['#008BA0','#3B82F6','#10B981','#A78BFA','#F59E0B','#F472B6','#34D399'][i] }))} />
           </div>
         </ChartCard>
       </div>

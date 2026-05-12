@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect, CSSProperties } from 'react';
-import { ProjectStatus, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
+import { ProjectStage, STAGE_CONFIG, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
 import { useColors } from '../context/ThemeContext';
 
 export interface ProjectCounts {
-  total:            number;
-  energized:        number;
-  construction:     number;
-  preCon:           number;
-  powerPlant:       number;
-  substation:       number;
-  transmissionLine: number;
+  total:           number;
+  cod:             number;
+  konstruksi:      number;
+  gi:              number;
+  trans:           number;
+  kit:             number;
 }
 
 interface Props {
@@ -20,9 +19,9 @@ interface Props {
   activeProvinces:  string[];
   onProvinceToggle: (prov: string) => void;
   onProvinceClear:  () => void;
-  activeStatuses:   ProjectStatus[];
-  onStatusToggle:   (s: ProjectStatus) => void;
-  onStatusClear:    () => void;
+  activeStages:     ProjectStage[];
+  onStageToggle:    (s: ProjectStage) => void;
+  onStageClear:     () => void;
 }
 
 function hexToRgb(hex: string) {
@@ -89,16 +88,15 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
   );
 }
 
-const STATUS_PILLS: { value: ProjectStatus; label: string; color: string }[] = [
-  { value: 'ENERGIZED',        label: 'Energized',        color: '#10B981' },
-  { value: 'CONSTRUCTION',     label: 'Construction',     color: '#F59E0B' },
-  { value: 'PRE_CONSTRUCTION', label: 'Pre-Construction', color: '#3B82F6' },
-];
+// All 10 stages as quick-filter pills
+const STAGE_PILLS: { value: ProjectStage; color: string }[] = (
+  Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][]
+).map(([value, cfg]) => ({ value, color: cfg.color }));
 
 export default function FilterBar({
   activeFilters, onToggle, onClearAll, projectCounts,
   activeProvinces, onProvinceToggle, onProvinceClear,
-  activeStatuses, onStatusToggle, onStatusClear,
+  activeStages, onStageToggle, onStageClear,
 }: Props) {
   void projectCounts;
   const c = useColors();
@@ -119,37 +117,35 @@ export default function FilterBar({
   };
 
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:c.bgCard, borderBottom:`1px solid ${c.border}`, flexShrink:0, flexWrap:'nowrap' }}>
+    <div style={{ display:'flex', flexDirection:'column', background:c.bgCard, borderBottom:`1px solid ${c.border}`, flexShrink:0 }}>
 
-      <ProvinceDropdown activeProvinces={activeProvinces} onToggle={onProvinceToggle} onClearAll={onProvinceClear} />
+      {/* Row 1: Province + Stage */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px', flexWrap:'wrap' }}>
+        <ProvinceDropdown activeProvinces={activeProvinces} onToggle={onProvinceToggle} onClearAll={onProvinceClear} />
 
-      <div style={{ width:1, height:24, background:c.border, alignSelf:'center', flexShrink:0 }} />
+        <div style={{ width:1, height:20, background:c.border, alignSelf:'center', flexShrink:0 }} />
 
-      {/* Status filter */}
-      <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'nowrap', flexShrink:0 }}>
-        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>STATUS</span>
-        {STATUS_PILLS.map(({ value, label, color }) => {
-          const active = activeStatuses.includes(value);
+        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>STAGE</span>
+        {STAGE_PILLS.map(({ value, color }) => {
+          const active = activeStages.includes(value);
           return (
-            <button key={value} onClick={() => onStatusToggle(value)} style={pill(active, color)}>
+            <button key={value} onClick={() => onStageToggle(value)} style={pill(active, color)}>
               {active && <span style={{ width:5, height:5, borderRadius:'50%', background:color, display:'inline-block', flexShrink:0 }} />}
-              {label}
+              {STAGE_CONFIG[value].label}
             </button>
           );
         })}
-        {activeStatuses.length > 0 && (
-          <button onClick={onStatusClear} style={clearBtn}>✕</button>
+        {activeStages.length > 0 && (
+          <button onClick={onStageClear} style={clearBtn}>✕</button>
         )}
       </div>
 
-      <div style={{ width:1, height:24, background:c.border, alignSelf:'center', flexShrink:0 }} />
-
-      {/* Urgency filter */}
-      <div style={{ display:'flex', alignItems:'center', gap:5, flex:1, minWidth:0, flexWrap:'wrap' }}>
+      {/* Row 2: Urgency */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 14px 5px', flexWrap:'wrap', borderTop:`1px solid ${c.border}` }}>
         <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>URGENCY</span>
         {URGENCY_OPTIONS.map(opt => {
           const active = activeFilters.includes(opt);
-          const color  = URGENCY_COLORS[opt];
+          const color  = URGENCY_COLORS[opt] ?? '#64748B';
           return (
             <button key={opt} onClick={() => onToggle(opt)} style={pill(active, color)}>
               {active && <span style={{ width:5, height:5, borderRadius:'50%', background:color, display:'inline-block', flexShrink:0 }} />}
