@@ -445,7 +445,7 @@ function EditModal({ project, onClose, onSaved }: {
 
         <div style={{ display:'flex', flexDirection:'column', gap:14, maxHeight:'65vh', overflowY:'auto', paddingRight:8 }}>
           <div><div style={labelStyle}>Status</div>
-            <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
+            <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} style={inputStyle}>
               {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
