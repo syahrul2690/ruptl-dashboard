@@ -88,12 +88,10 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
   );
 }
 
-// Show a subset of key stages as quick-filter pills
-const STAGE_PILLS: { value: ProjectStage; color: string }[] = [
-  { value: 'OBC',        color: STAGE_CONFIG.OBC.color },
-  { value: 'KONSTRUKSI', color: STAGE_CONFIG.KONSTRUKSI.color },
-  { value: 'COD',        color: STAGE_CONFIG.COD.color },
-];
+// All 10 stages as quick-filter pills
+const STAGE_PILLS: { value: ProjectStage; color: string }[] = (
+  Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][]
+).map(([value, cfg]) => ({ value, color: cfg.color }));
 
 export default function FilterBar({
   activeFilters, onToggle, onClearAll, projectCounts,
@@ -119,14 +117,14 @@ export default function FilterBar({
   };
 
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:c.bgCard, borderBottom:`1px solid ${c.border}`, flexShrink:0, flexWrap:'nowrap' }}>
+    <div style={{ display:'flex', flexDirection:'column', background:c.bgCard, borderBottom:`1px solid ${c.border}`, flexShrink:0 }}>
 
-      <ProvinceDropdown activeProvinces={activeProvinces} onToggle={onProvinceToggle} onClearAll={onProvinceClear} />
+      {/* Row 1: Province + Stage */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px', flexWrap:'wrap' }}>
+        <ProvinceDropdown activeProvinces={activeProvinces} onToggle={onProvinceToggle} onClearAll={onProvinceClear} />
 
-      <div style={{ width:1, height:24, background:c.border, alignSelf:'center', flexShrink:0 }} />
+        <div style={{ width:1, height:20, background:c.border, alignSelf:'center', flexShrink:0 }} />
 
-      {/* Stage filter */}
-      <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'nowrap', flexShrink:0 }}>
         <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>STAGE</span>
         {STAGE_PILLS.map(({ value, color }) => {
           const active = activeStages.includes(value);
@@ -142,10 +140,8 @@ export default function FilterBar({
         )}
       </div>
 
-      <div style={{ width:1, height:24, background:c.border, alignSelf:'center', flexShrink:0 }} />
-
-      {/* Urgency filter */}
-      <div style={{ display:'flex', alignItems:'center', gap:5, flex:1, minWidth:0, flexWrap:'wrap' }}>
+      {/* Row 2: Urgency */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 14px 5px', flexWrap:'wrap', borderTop:`1px solid ${c.border}` }}>
         <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>URGENCY</span>
         {URGENCY_OPTIONS.map(opt => {
           const active = activeFilters.includes(opt);
