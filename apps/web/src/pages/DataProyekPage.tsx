@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { Project, ProjectStatus, ProjectType, STATUS_CONFIG, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -423,11 +423,11 @@ function EditModal({ project, onClose, onSaved }: {
     { value: 'Force Majeure', label: 'Force Majeure' },
   ];
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     width:'100%', background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:5,
     color:c.textPrimary, fontSize:12, padding:'7px 10px', fontFamily:'inherit', outline:'none', boxSizing:'border-box',
   };
-  const labelStyle: React.CSSProperties = { fontSize:10, fontWeight:600, color:c.textSec, marginBottom:4, textTransform:'uppercase', letterSpacing:'0.06em' };
+  const labelStyle: CSSProperties = { fontSize:10, fontWeight:600, color:c.textSec, marginBottom:4, textTransform:'uppercase', letterSpacing:'0.06em' };
 
   return (
     <div style={{
