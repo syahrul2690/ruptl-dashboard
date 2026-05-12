@@ -10,9 +10,9 @@ import { ListProjectsDto } from './dto/list-projects.dto';
 import { ProgressRowDto } from './dto/upsert-progress.dto';
 
 const SLIM_SELECT = {
-  id: true, lat: true, lng: true, status: true,
+  id: true, lat: true, lng: true, stage: true, status: true,
   type: true, subtype: true, issueType: true,
-  name: true, island: true, province: true, urgencyCategory: true,
+  name: true, island: true, region: true, province: true, urgencyCategory: true,
   lineFromId: true, lineToId: true,
 };
 
@@ -30,10 +30,12 @@ export class ProjectsService {
 
   async findAll(q: ListProjectsDto) {
     const where: Prisma.ProjectWhereInput = {};
+    if (q.stage)    where.stage    = q.stage;
     if (q.status)   where.status   = q.status;
     if (q.type)     where.type     = q.type;
     if (q.province) where.province = q.province;
     if (q.island)   where.island   = q.island;
+    if (q.region)   where.region   = q.region;
     if (q.urgency)  where.urgencyCategory = { has: q.urgency };
     if (q.search) {
       where.OR = [
@@ -47,7 +49,7 @@ export class ProjectsService {
     const page  = q.page  ?? 1;
     const limit = q.limit ?? 50;
 
-    const SORTABLE = ['name', 'ruptlCode', 'type', 'province', 'status',
+    const SORTABLE = ['name', 'ruptlCode', 'type', 'province', 'region', 'stage', 'status',
                       'progressPlan', 'progressRealisasi', 'deviasi', 'updatedAt'] as const;
     const sortField = SORTABLE.includes(q.sort as any) ? q.sort! : 'updatedAt';
     const sortDir   = q.order === 'asc' ? 'asc' : 'desc';
@@ -55,10 +57,10 @@ export class ProjectsService {
     const [data, total] = await Promise.all([
       this.prisma.project.findMany({
         where,
-        select:   slim ? SLIM_SELECT : undefined,
-        orderBy:  { [sortField]: sortDir },
-        skip:     (page - 1) * limit,
-        take:     limit,
+        select:  slim ? SLIM_SELECT : undefined,
+        orderBy: { [sortField]: sortDir },
+        skip:    (page - 1) * limit,
+        take:    limit,
       }),
       this.prisma.project.count({ where }),
     ]);
@@ -107,7 +109,7 @@ export class ProjectsService {
   async getProgress(id: string) {
     await this.findOne(id);
     return this.prisma.projectProgress.findMany({
-      where: { projectId: id },
+      where:   { projectId: id },
       orderBy: { yearMonth: 'asc' },
     });
   }

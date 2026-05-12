@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Execution Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; padding: 32px; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 24px; color: #38bdf8; margin-bottom: 8px; border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; }
+  h2 { font-size: 18px; color: #7dd3fc; margin: 32px 0 12px; padding: 8px 0; border-bottom: 1px solid #1e3a5f; }
+  h3 { font-size: 15px; color: #93c5fd; margin: 20px 0 8px; }
+  p, li { font-size: 13px; color: #cbd5e1; }
+  p { margin-bottom: 10px; }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 12px; }
+  th { background: #1e293b; color: #93c5fd; text-align: left; padding: 8px 10px; font-weight: 600; border: 1px solid #334155; }
+  td { padding: 6px 10px; border: 1px solid #334155; color: #cbd5e1; }
+  tr:nth-child(even) td { background: rgba(30,41,59,0.5); }
+  code { background: #1e293b; color: #f472b6; padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: 'SF Mono', Monaco, monospace; }
+  pre { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; overflow-x: auto; margin: 10px 0 16px; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: #a5f3fc; padding: 0; }
+  .summary-box { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin: 16px 0 24px; }
+  .summary-box p { margin-bottom: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+  .badge-new { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .badge-change { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .badge-delete { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .phase { background: #1e293b; border-left: 3px solid #38bdf8; padding: 16px 20px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+  .phase-num { font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .arrow { color: #475569; }
+  .highlight { color: #fbbf24; font-weight: 600; }
+  blockquote { border-left: 3px solid #475569; padding: 8px 16px; margin: 10px 0; color: #94a3b8; font-size: 12px; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e3a5f; margin: 28px 0; }
+</style>
+</head>
+<body>
+
+<h1>Execution Plan: Align Database Schema with Excel Import</h1>
+<div class="summary-box">
+  <p>Refactor the database schema, API, and frontend to match the structure of the <strong>"ALL" sheet</strong> in the PLN Excel dashboard. Three major changes:</p>
+  <p>1. <span class="badge badge-change">REPLACE</span> <code>ProjectStatus</code> (3 values) with <code>ProjectStage</code> (10 values) from Excel's <code>ACTUAL STAGE</code></p>
+  <p>2. <span class="badge badge-new">ADD</span> New columns to <code>Project</code> model that exist in Excel but missing from DB</p>
+  <p>3. <span class="badge badge-change">ADJUST</span> Urgency categories to match Excel's <code>URGENSI</code> values</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 1 — Database Schema Changes</h2>
+
+<h3>1.1 Replace <code>ProjectStatus</code> enum with <code>ProjectStage</code> enum</h3>
+<table>
+  <tr><th>Current (3 values)</th><th></th><th>New — ProjectStage (10 values)</th><th>Excel Label</th></tr>
+  <tr><td><code>PRE_CONSTRUCTION</code></td><td class="arrow">→</td><td><code>OBC</code></td><td>01. OBC</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>CENTRALIZED_PLANNING</code></td><td>02. Centralized Planning (CP)</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>TVV</code></td><td>03. Tim Verifikasi Validasi (TVV)</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>KOMITE_INVESTASI</code></td><td>04. Komite Investasi (KI)</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>RKAP</code></td><td>05. RKAP</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>SKAI</code></td><td>06. SKAI</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>RENDAN</code></td><td>07. Procurement Planning (RENDAN)</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>LAKDAN</code></td><td>08. Procurement (LAKDAN)</td></tr>
+  <tr><td><code>CONSTRUCTION</code></td><td class="arrow">→</td><td><code>KONSTRUKSI</code></td><td>09. Konstruksi</td></tr>
+  <tr><td><code>ENERGIZED</code></td><td class="arrow">→</td><td><code>COD</code></td><td>10. COD</td></tr>
+</table>
+
+<h3>1.2 Add <code>status</code> as a separate String field</h3>
+<p>The Excel has a <strong>separate</strong> <code>STATUS</code> column (Leading / Lagging / On-track / Completed / Cancelled / Terminasi / Started). This is the <em>progress status</em>, while <code>ACTUAL STAGE</code> is the <em>project lifecycle stage</em>.</p>
+<table>
+  <tr><th>DB Field</th><th>Prisma Type</th><th>Maps to Excel Column</th><th>Values</th></tr>
+  <tr><td><code>stage</code></td><td><code>ProjectStage</code> (enum)</td><td>ACTUAL STAGE</td><td>OBC → COD (10 stages)</td></tr>
+  <tr><td><code>status</code></td><td><code>String</code></td><td>STATUS</td><td>Leading / Lagging / On-track / Completed / Cancelled / Terminasi / Started</td></tr>
+</table>
+
+<h3>1.3 Add new columns to <code>Project</code> model</h3>
+<table>
+  <tr><th>New Field</th><th>Prisma Type</th><th>Excel Column</th><th>Notes</th></tr>
+  <tr><td><code>stage</code></td><td><code>ProjectStage</code></td><td>ACTUAL STAGE</td><td><span class="badge badge-change">replaces old status enum</span></td></tr>
+  <tr><td><code>status</code></td><td><code>String</code></td><td>STATUS</td><td><span class="badge badge-change">changed from enum to string</span></td></tr>
+  <tr><td><code>priority</code></td><td><code>String?</code></td><td>Prioritas</td><td><span class="badge badge-new">NEW</span> P0 / P0' / (PRB)</td></tr>
+  <tr><td><code>region</code></td><td><code>String</code></td><td>REGION</td><td><span class="badge badge-new">NEW</span> JAMALI / SUMATERA / etc.</td></tr>
+  <tr><td><code>notification</code></td><td><code>String?</code></td><td>NOTIFIKASI</td><td><span class="badge badge-new">NEW</span></td></tr>
+  <tr><td><code>issueStrategic</code></td><td><code>String?</code></td><td>Issue Strategis</td><td><span class="badge badge-new">NEW</span></td></tr>
+  <tr><td><code>bpoNotes</code></td><td><code>String?</code></td><td>Keterangan BPO</td><td><span class="badge badge-new">NEW</span></td></tr>
+  <tr><td><code>bpoLastModified</code></td><td><code>DateTime?</code></td><td>Last Modified BPO</td><td><span class="badge badge-new">NEW</span></td></tr>
+  <tr><td><code>comment</code></td><td><code>String?</code></td><td>Comment</td><td><span class="badge badge-new">NEW</span></td></tr>
+</table>
+
+<h3>1.4 Update <code>ProjectType</code> enum</h3>
+<table>
+  <tr><th>Current</th><th></th><th>New</th><th>Excel Label</th></tr>
+  <tr><td><code>SUBSTATION</code></td><td class="arrow">→</td><td><code>GI</code></td><td>GI (Gardu Induk)</td></tr>
+  <tr><td><code>TRANSMISSION_LINE</code></td><td class="arrow">→</td><td><code>TRANS</code></td><td>TRANS</td></tr>
+  <tr><td><code>POWER_PLANT</code></td><td class="arrow">→</td><td><code>KIT</code></td><td>KIT</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>KIT_EBT</code></td><td>KIT-EBT</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>KIT_NONEBT</code></td><td>KIT-NONEBT</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>FSRU</code></td><td>FSRU</td></tr>
+  <tr><td colspan="2" style="color:#475569;text-align:center">—</td><td><code>KIT_RELOKASI</code></td><td>KIT (RELOKASI)</td></tr>
+</table>
+
+<h3>1.5 Adjust urgency categories</h3>
+<table>
+  <tr><th>Current (7 values)</th><th>New (10 values — normalized)</th></tr>
+  <tr><td><code>Kehandalan Sistem</code></td><td><code>Keandalan Sistem</code> <span class="badge badge-change">renamed</span></td></tr>
+  <tr><td><code>RUPTL</code></td><td><code>RUPTL</code></td></tr>
+  <tr><td><code>Penurunan BPP</code></td><td><code>Penurunan BPP</code></td></tr>
+  <tr><td><code>Pemenuhan EBT</code></td><td><code>Pemenuhan EBT</code></td></tr>
+  <tr><td><code>Kerawanan Sistem</code></td><td><code>Kerawanan Sistem</code></td></tr>
+  <tr><td><code>Demand KTT</code></td><td><code>Demand KTT</code></td></tr>
+  <tr><td><code>Evakuasi Daya</code></td><td><code>Evakuasi Daya</code></td></tr>
+  <tr><td style="color:#475569">—</td><td><code>NON LIST</code> <span class="badge badge-new">NEW</span></td></tr>
+  <tr><td style="color:#475569">—</td><td><code>KTT</code> <span class="badge badge-new">NEW</span></td></tr>
+  <tr><td style="color:#475569">—</td><td><code>Interkoneksi</code> <span class="badge badge-new">NEW</span></td></tr>
+</table>
+<blockquote>Normalization: <code>keandalan</code> / <code>Keandalan</code> → merged into <code>Keandalan Sistem</code>. <code>RUPTL /RKAP 2025</code> → merged into <code>RUPTL</code>.</blockquote>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 2 — Prisma Migration</h2>
+<div class="phase">
+  <div class="phase-num">Migration Strategy</div>
+  <p>Multi-step migration to rename/replace enums safely:</p>
+  <ol>
+    <li>Create new <code>ProjectStage</code> enum with 10 values</li>
+    <li>Add new columns (<code>stage</code>, <code>priority</code>, <code>region</code>, <code>notification</code>, etc.)</li>
+    <li>Migrate old status → stage: <code>PRE_CONSTRUCTION → OBC</code>, <code>CONSTRUCTION → KONSTRUKSI</code>, <code>ENERGIZED → COD</code></li>
+    <li>Convert <code>status</code> column from enum to String (set <code>On-track</code> as default for migrated rows)</li>
+    <li>Update <code>ProjectType</code> enum: add new values, map <code>POWER_PLANT → KIT</code>, <code>SUBSTATION → GI</code>, <code>TRANSMISSION_LINE → TRANS</code></li>
+    <li>Drop old <code>ProjectStatus</code> enum</li>
+    <li>Set NOT NULL constraints on required fields</li>
+  </ol>
+  <p><strong>File:</strong> <code>apps/api/prisma/schema.prisma</code></p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 3 — API Backend Changes</h2>
+
+<h3>3.1 DTOs</h3>
+<table>
+  <tr><th>File</th><th>Change</th></tr>
+  <tr><td><code>dto/create-project.dto.ts</code></td><td>Update <code>status</code> to String, add <code>stage</code> as <code>ProjectStage</code>, add new optional fields</td></tr>
+  <tr><td><code>dto/update-project.dto.ts</code></td><td>Inherits — no direct change</td></tr>
+  <tr><td><code>dto/list-projects.dto.ts</code></td><td>Add <code>stage</code> filter, update <code>status</code> to String, add <code>region</code> filter</td></tr>
+</table>
+
+<h3>3.2 Services</h3>
+<table>
+  <tr><th>File</th><th>Change</th></tr>
+  <tr><td><code>projects.service.ts</code></td><td>Update <code>findAll</code> for <code>stage</code> + <code>region</code> filters. Update <code>SLIM_SELECT</code> with new fields.</td></tr>
+  <tr><td><code>import.service.ts</code></td><td>Replace <code>STATUS_MAP</code> → <code>STAGE_MAP</code> (10 stages). Replace <code>TYPE_MAP</code> (7 types). Map all new Excel columns. Normalize urgency.</td></tr>
+  <tr><td><code>analytics.service.ts</code></td><td>Replace <code>byStatus</code> → <code>byStage</code>. Update raw SQL (<code>ENERGIZED → COD</code>). Add <code>byRegion</code>.</td></tr>
+</table>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 4 — Frontend Changes</h2>
+
+<h3>4.1 Types & Constants</h3>
+<table>
+  <tr><th>File</th><th>Change</th></tr>
+  <tr><td><code>lib/types.ts</code></td><td>Replace <code>ProjectStatus</code> → <code>ProjectStage</code>. Add <code>status: string</code>. New <code>STAGE_CONFIG</code> (10 stages). Update <code>URGENCY_OPTIONS</code> (10 values). Update <code>ProjectType</code> (7 values). Add new fields to interfaces.</td></tr>
+</table>
+
+<h3>4.2 Pages & Components (8 files)</h3>
+<table>
+  <tr><th>File</th><th>Change</th></tr>
+  <tr><td><code>DataProyekPage.tsx</code></td><td>Table columns: show <code>stage</code>. Filter dropdowns: 10 stages, 7 types. Edit modal: new fields. Use <code>STAGE_CONFIG</code>.</td></tr>
+  <tr><td><code>InputPage.tsx</code></td><td>Form: new type options, stage dropdown, new fields (priority, region, etc.)</td></tr>
+  <tr><td><code>MapPage.tsx</code></td><td>Filter logic: <code>stage</code> instead of <code>status</code></td></tr>
+  <tr><td><code>FilterBar.tsx</code></td><td><code>STATUS_PILLS</code> → <code>STAGE_PILLS</code> (10 stages). Update urgency pills.</td></tr>
+  <tr><td><code>MapPanel.tsx</code></td><td><code>nodeColor()</code> uses <code>STAGE_CONFIG</code>. Update tooltip.</td></tr>
+  <tr><td><code>DetailPanel.tsx</code></td><td>Status display → stage display. Edit form: new fields. Urgency section.</td></tr>
+  <tr><td><code>ProjectStatsContext.tsx</code></td><td>Read <code>byStage</code> instead of <code>byStatus</code>.</td></tr>
+</table>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 5 — Import Excel Column Mapping</h2>
+
+<table>
+  <tr><th>Excel Column</th><th>DB Field</th><th>Transformation</th></tr>
+  <tr><td>NAMA PROYEK</td><td><code>name</code></td><td>Trim</td></tr>
+  <tr><td>RUPTL CODE</td><td><code>ruptlCode</code></td><td>Trim</td></tr>
+  <tr><td>STATUS</td><td><code>status</code></td><td>Direct string</td></tr>
+  <tr><td>ACTUAL STAGE</td><td><code>stage</code></td><td>Map "01. OBC" → <code>OBC</code></td></tr>
+  <tr><td>TIPE PROYEK</td><td><code>type</code></td><td>Map "GI" → <code>GI</code>, "KIT-EBT" → <code>KIT_EBT</code></td></tr>
+  <tr><td>Prioritas</td><td><code>priority</code></td><td>Trim, nullable</td></tr>
+  <tr><td>KAPASITAS</td><td><code>capacity</code></td><td>parseFloat, nullable</td></tr>
+  <tr><td>SATUAN</td><td><code>capacityUnit</code></td><td>Trim</td></tr>
+  <tr><td>LOKASI</td><td><code>province</code></td><td>Trim</td></tr>
+  <tr><td>REGION</td><td><code>region</code></td><td>Trim</td></tr>
+  <tr><td>SISTEM KELISTRIKAN</td><td><code>gridSystem</code></td><td>Trim</td></tr>
+  <tr><td>URGENSI</td><td><code>urgencyCategory</code></td><td>Single string → [string] array, normalize casing</td></tr>
+  <tr><td>COD RUPTL</td><td><code>codTargetRUPTL</code></td><td>String(year)</td></tr>
+  <tr><td>COD KONTRAKTUAL</td><td><code>codKontraktual</code></td><td>String, nullable</td></tr>
+  <tr><td>COD ESTIMASI</td><td><code>codEstimasi</code></td><td>String, nullable</td></tr>
+  <tr><td>Keterangan BPO</td><td><code>bpoNotes</code></td><td>Trim, nullable</td></tr>
+  <tr><td>Last Modified BPO</td><td><code>bpoLastModified</code></td><td>Parse datetime, nullable</td></tr>
+  <tr><td>Tipe Issue</td><td><code>issueType</code></td><td>Direct string</td></tr>
+  <tr><td>Issue Strategis</td><td><code>issueStrategic</code></td><td>Trim, nullable</td></tr>
+  <tr><td>RENCANA PROGRESS (%)</td><td><code>progressPlan</code></td><td>parseFloat</td></tr>
+  <tr><td>REALISASI PROGRESS (%)</td><td><code>progressRealisasi</code></td><td>parseFloat</td></tr>
+  <tr><td>DEVIASI</td><td><code>deviasi</code></td><td>parseFloat</td></tr>
+  <tr><td>NOTIFIKASI</td><td><code>notification</code></td><td>Trim, nullable</td></tr>
+  <tr><td>Comment</td><td><code>comment</code></td><td>Trim, nullable</td></tr>
+</table>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Phase 6 — Excel Import Feature Adjustments</h2>
+<p>The current import service expects a custom CSV/Excel template with English column names. It needs to be rewritten to consume the <strong>PLN "ALL" sheet format directly</strong>.</p>
+
+<h3>6.1 Backend: <code>import.service.ts</code> — Sheet & Header Handling</h3>
+<div class="phase">
+  <div class="phase-num">Current behavior</div>
+  <ul>
+    <li>Reads the <strong>first sheet</strong> of the uploaded file</li>
+    <li>Assumes <strong>Row 1 = header</strong> with English column names (<code>name</code>, <code>type</code>, <code>status</code>, etc.)</li>
+    <li>Maps 3 statuses via <code>STATUS_MAP</code>, 3 types via <code>TYPE_MAP</code></li>
+  </ul>
+</div>
+<div class="phase">
+  <div class="phase-num">New behavior</div>
+  <ul>
+    <li>Read the <strong>"ALL" sheet</strong> by name (fallback to first sheet if not found)</li>
+    <li>Row 1 (index 0) is a <strong>count/summary row</strong> — <span class="badge badge-change">SKIP</span></li>
+    <li>Row 2 (index 1) is the <strong>actual header</strong> with Indonesian column names</li>
+    <li>Data starts from Row 3 (index 2)</li>
+    <li>Only read columns 0–24 — columns 25–43 are helper/internal columns → <span class="badge badge-delete">IGNORE</span></li>
+  </ul>
+</div>
+
+<h3>6.2 Backend: <code>import.service.ts</code> — Column Mapping Rewrite</h3>
+<p>Replace the current English-named column getter with exact Excel header matching:</p>
+<table>
+  <tr><th>Current Getter</th><th></th><th>New Excel Header</th><th>DB Field</th></tr>
+  <tr><td><code>g('name', 'Nama Proyek')</code></td><td class="arrow">→</td><td><code>NAMA PROYEK</code></td><td><code>name</code></td></tr>
+  <tr><td><code>g('type', 'Tipe Proyek')</code></td><td class="arrow">→</td><td><code>TIPE PROYEK</code></td><td><code>type</code></td></tr>
+  <tr><td><code>g('status', 'Status')</code></td><td class="arrow">→</td><td><code>STATUS</code></td><td><code>status</code> (string)</td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>ACTUAL STAGE</code></td><td><code>stage</code> (enum)</td></tr>
+  <tr><td><code>g('ruptlCode', 'Kode RUPTL')</code></td><td class="arrow">→</td><td><code>RUPTL CODE</code></td><td><code>ruptlCode</code></td></tr>
+  <tr><td><code>g('province', 'Provinsi')</code></td><td class="arrow">→</td><td><code>LOKASI</code></td><td><code>province</code></td></tr>
+  <tr><td><code>g('island', 'Pulau')</code></td><td class="arrow">→</td><td><code>REGION</code></td><td><code>island</code> + <code>region</code></td></tr>
+  <tr><td><code>g('gridSystem', 'Sistem Grid')</code></td><td class="arrow">→</td><td><code>SISTEM KELISTRIKAN</code></td><td><code>gridSystem</code></td></tr>
+  <tr><td><code>g('urgencyCategory', '...')</code></td><td class="arrow">→</td><td><code>URGENSI</code></td><td><code>urgencyCategory</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Prioritas</code></td><td><code>priority</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>KAPASITAS</code></td><td><code>capacity</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>SATUAN</code></td><td><code>capacityUnit</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Tipe Issue</code></td><td><code>issueType</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Issue Strategis</code></td><td><code>issueStrategic</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>NOTIFIKASI</code></td><td><code>notification</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Comment</code></td><td><code>comment</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Keterangan BPO...</code></td><td><code>bpoNotes</code></td></tr>
+  <tr><td><span style="color:#475569">— (new)</span></td><td class="arrow">→</td><td><code>Last Modified...</code></td><td><code>bpoLastModified</code></td></tr>
+  <tr><td style="background:rgba(16,185,129,0.06)"><code>g('lat', 'Latitude')</code></td><td class="arrow">→</td><td><code>Column AS — Latitude</code></td><td><code>lat</code></td></tr>
+  <tr><td style="background:rgba(16,185,129,0.06)"><code>g('lng', 'Longitude')</code></td><td class="arrow">→</td><td><code>Column AT — Longitude</code></td><td><code>lng</code></td></tr>
+  <tr><td style="background:rgba(16,185,129,0.06)"><code>g('relatedCodes', '...')</code></td><td class="arrow">→</td><td><code>Column AU — Related Projects</code></td><td><code>relatedProjects</code> (RUPTL Codes, semicolon-separated)</td></tr>
+  <tr><td style="background:rgba(16,185,129,0.06)"><code>g('lineFromCode', '...')</code></td><td class="arrow">→</td><td><code>Column AV — Line From</code></td><td><code>lineFromId</code> (RUPTL Code, for TRANS only)</td></tr>
+  <tr><td style="background:rgba(16,185,129,0.06)"><code>g('lineToCode', '...')</code></td><td class="arrow">→</td><td><code>Column AW — Line To</code></td><td><code>lineToId</code> (RUPTL Code, for TRANS only)</td></tr>
+</table>
+
+<h3>6.3 Backend: <code>import.service.ts</code> — Enum Mapping Rewrite</h3>
+<table>
+  <tr><th colspan="2">Replace <code>STATUS_MAP</code> (deleted) with <code>STAGE_MAP</code></th></tr>
+  <tr><th>Excel Value</th><th>DB Enum</th></tr>
+  <tr><td><code>'01. OBC'</code></td><td><code>OBC</code></td></tr>
+  <tr><td><code>'02. Centralized planning (CP)'</code></td><td><code>CENTRALIZED_PLANNING</code></td></tr>
+  <tr><td><code>'03. Tim Verifikasi Validasi (TVV)'</code></td><td><code>TVV</code></td></tr>
+  <tr><td><code>'04. Komite Investasi (KI)'</code></td><td><code>KOMITE_INVESTASI</code></td></tr>
+  <tr><td><code>'05. RKAP'</code></td><td><code>RKAP</code></td></tr>
+  <tr><td><code>'06. SKAI'</code></td><td><code>SKAI</code></td></tr>
+  <tr><td><code>'07. Procurement Planning (RENDAN)'</code></td><td><code>RENDAN</code></td></tr>
+  <tr><td><code>'08. Procurement (LAKDAN)'</code></td><td><code>LAKDAN</code></td></tr>
+  <tr><td><code>'09. Konstruksi'</code></td><td><code>KONSTRUKSI</code></td></tr>
+  <tr><td><code>'10. COD'</code></td><td><code>COD</code></td></tr>
+</table>
+
+<table>
+  <tr><th colspan="2">Replace <code>TYPE_MAP</code></th></tr>
+  <tr><th>Excel Value</th><th>DB Enum</th></tr>
+  <tr><td><code>'GI'</code></td><td><code>GI</code></td></tr>
+  <tr><td><code>'TRANS'</code></td><td><code>TRANS</code></td></tr>
+  <tr><td><code>'KIT'</code></td><td><code>KIT</code></td></tr>
+  <tr><td><code>'KIT-EBT'</code></td><td><code>KIT_EBT</code></td></tr>
+  <tr><td><code>'KIT-NONEBT'</code></td><td><code>KIT_NONEBT</code></td></tr>
+  <tr><td><code>'FSRU'</code></td><td><code>FSRU</code></td></tr>
+  <tr><td><code>'KIT (RELOKASI)'</code></td><td><code>KIT_RELOKASI</code></td></tr>
+</table>
+
+<h3>6.4 Backend: <code>import.service.ts</code> — Validation Changes</h3>
+<div class="phase">
+  <div class="phase-num">Changes to <code>validateRows()</code></div>
+  <ul>
+    <li><span class="badge badge-change">KEEP</span> <code>lat/lng</code> — user will add Latitude in column <strong>AS</strong> and Longitude in column <strong>AT</strong>. Still required for non-Transmission Line projects.</li>
+    <li><span class="badge badge-change">KEEP</span> <code>relatedCodes</code> — user will add Related Projects (RUPTL Codes, semicolon-separated) in column <strong>AU</strong>. Resolved to IDs in Pass 2.</li>
+    <li><span class="badge badge-change">KEEP</span> <code>lineFromCode / lineToCode</code> — user will add start/end line RUPTL Codes in columns <strong>AV</strong> and <strong>AW</strong> (for Transmission Line only). Resolved to IDs in Pass 2.</li>
+    <li><span class="badge badge-change">CHANGE</span> <code>island</code> is no longer a separate column — derive from <code>REGION</code> mapping:
+      <code>JAMALI → Jawa</code>, <code>SUMATERA → Sumatera</code>, <code>SULAWESI → Sulawesi</code>, <code>KALIMANTAN → Kalimantan</code>, <code>MAPA → Papua</code>, <code>NUSRA → Nusa Tenggara</code>
+    </li>
+    <li><span class="badge badge-change">CHANGE</span> <code>subtype</code> — derive from <code>TIPE PROYEK</code> (e.g., <code>KIT-EBT → EBT</code>, <code>GI → Gardu Induk</code>)</li>
+    <li><span class="badge badge-change">CHANGE</span> <code>urgencyCategory</code> — single string value → wrap in array <code>[value]</code>, not semicolon-split</li>
+    <li><span class="badge badge-change">CHANGE</span> Urgency normalization: <code>keandalan → Keandalan Sistem</code>, <code>RUPTL /RKAP 2025 → RUPTL</code></li>
+    <li><span class="badge badge-new">ADD</span> Parse <code>COD RUPTL</code> as year integer → string (e.g., <code>2029 → "2029"</code>)</li>
+    <li><span class="badge badge-new">ADD</span> Parse <code>Last Modified BPO</code> as DateTime</li>
+    <li><span class="badge badge-new">ADD</span> Map <code>RENCANA PROGRESS (%)</code> and <code>REALISASI PROGRESS (%)</code> as float (already numeric in Excel)</li>
+    <li><span class="badge badge-new">ADD</span> Filter out rows where <code>NO.</code> is not a valid number (skip summary/blank rows)</li>
+  </ul>
+</div>
+
+<h3>6.5 Backend: <code>import.service.ts</code> — <code>parseBuffer()</code> Update</h3>
+<div class="phase">
+  <div class="phase-num">Current</div>
+  <pre><code>const wb = XLSX.read(buffer, { type: 'buffer' });
+const ws = wb.Sheets[wb.SheetNames[0]];  // always first sheet
+return XLSX.utils.sheet_to_json(ws, { defval: '' });</code></pre>
+</div>
+<div class="phase">
+  <div class="phase-num">New</div>
+  <pre><code>const wb = XLSX.read(buffer, { type: 'buffer' });
+// Prefer "ALL" sheet, fallback to first
+const ws = wb.Sheets['ALL'] ?? wb.Sheets[wb.SheetNames[0]];
+// Row 1 = summary counts, Row 2 = headers → use range starting from row 2
+const range = XLSX.utils.decode_range(ws['!ref']);
+range.s.r = 1;  // skip row 0 (summary), use row 1 as header
+ws['!ref'] = XLSX.utils.encode_range(range);
+return XLSX.utils.sheet_to_json(ws, { defval: '' });</code></pre>
+</div>
+
+<h3>6.6 Frontend: <code>InputPage.tsx</code> — Import UI Updates</h3>
+<table>
+  <tr><th>Section</th><th>Change</th></tr>
+  <tr>
+    <td>Column guide ("Kolom Wajib")</td>
+    <td>
+      <span class="badge badge-change">UPDATE</span> Show Excel column names instead of English names:<br>
+      <code>NAMA PROYEK</code>, <code>RUPTL CODE</code>, <code>ACTUAL STAGE</code>, <code>STATUS</code>, <code>TIPE PROYEK</code>, <code>LOKASI</code>, <code>REGION</code>, <code>SISTEM KELISTRIKAN</code>
+    </td>
+  </tr>
+  <tr>
+    <td>Accepted values guide</td>
+    <td>
+      <span class="badge badge-change">UPDATE</span> Show new enum values:<br>
+      • <strong>type:</strong> GI · TRANS · KIT · KIT-EBT · KIT-NONEBT · FSRU · KIT (RELOKASI)<br>
+      • <strong>stage:</strong> 01. OBC · 02. CP · ... · 10. COD<br>
+      • <strong>status:</strong> Leading · Lagging · On-track · Completed · Cancelled · Terminasi · Started
+    </td>
+  </tr>
+  <tr>
+    <td>Template download</td>
+    <td><span class="badge badge-change">UPDATE</span> Generate CSV template with new column headers matching Excel format</td>
+  </tr>
+  <tr>
+    <td>Preview table</td>
+    <td><span class="badge badge-change">UPDATE</span> Show new fields in preview: <code>stage</code>, <code>region</code>, <code>priority</code>, <code>notification</code></td>
+  </tr>
+  <tr>
+    <td>lat/lng note</td>
+    <td><span class="badge badge-change">KEEP</span> Update note: Latitude in column AS, Longitude in column AT. Required for non-TRANS projects.</td>
+  </tr>
+  <tr>
+    <td>Relationship columns guide</td>
+    <td><span class="badge badge-change">UPDATE</span> Show new column positions: Related Projects (AU, semicolon-separated RUPTL Codes), Line From (AV), Line To (AW) for Transmission Line.</td>
+  </tr>
+</table>
+
+<h3>6.7 Data Flow Summary</h3>
+<div class="phase" style="border-left-color: #10b981;">
+  <div class="phase-num" style="color:#10b981;">Import Pipeline (after changes)</div>
+  <pre><code>User uploads "Dashboard PLN.xlsx"
+    │
+    ▼
+parseBuffer() → reads "ALL" sheet, skips row 0, uses row 1 as header
+    │
+    ▼
+validateRows() → maps Indonesian headers to DB fields
+    │  ├─ ACTUAL STAGE → stage (via STAGE_MAP)
+    │  ├─ STATUS → status (direct string)
+    │  ├─ TIPE PROYEK → type (via TYPE_MAP)
+    │  ├─ REGION → region + island (derived)
+    │  ├─ URGENSI → urgencyCategory (normalized, wrapped in array)
+    │  ├─ Column AS/AT → lat/lng (required for non-TRANS)
+    │  ├─ Column AU → relatedCodes (semicolon-separated RUPTL Codes)
+    │  ├─ Column AV/AW → lineFromCode/lineToCode (TRANS only)
+    │  ├─ new fields: priority, notification, issueStrategic, bpoNotes, etc.
+    │  └─ skips rows where NO. is not numeric
+    │
+    ▼
+preview() → returns first 5 valid rows + error count
+    │
+    ▼
+commit() → upserts all projects (keyed on ruptlCode)
+    │
+    ▼
+5,597 projects imported</code></pre>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Execution Order</h2>
+
+<div class="phase">
+<div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+  <label id="step1" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 1</code>
+    <span style="color:#86efac;">Prisma schema + migration</span>
+  </label>
+  <label id="step2" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 2</code>
+    <span style="color:#86efac;">API: DTOs, Projects Service, Analytics Service</span>
+  </label>
+  <label id="step3" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 3</code>
+    <span style="color:#86efac;">API: Import Service rewrite (sheet selection, column mapping, validation)</span>
+  </label>
+  <label id="step4" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 4</code>
+    <span style="color:#86efac;">Frontend: types.ts (enums, constants, interfaces)</span>
+  </label>
+  <label id="step5" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 5</code>
+    <span style="color:#86efac;">Frontend: all pages &amp; components</span>
+  </label>
+  <label id="step6" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 6</code>
+    <span style="color:#86efac;">Frontend: InputPage.tsx import UI (column guide, template, preview)</span>
+  </label>
+  <label id="step7" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#0f2518;border:1px solid #166534;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #22c55e;background:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff;" class="check-box">✓</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 7</code>
+    <span style="color:#86efac;">Test import — 1,661 TRANS rows valid · 3,936 non-TRANS await lat/lng in col AS/AT</span>
+  </label>
+  <label id="step8" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#1e293b;border:1px solid #334155;cursor:default;">
+    <span style="width:22px;height:22px;border-radius:4px;border:2px solid #475569;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;" class="check-box">&#x200B;</span>
+    <code style="color:#a5f3fc;background:none;padding:0;">Step 8</code>
+    <span style="color:#cbd5e1;">Commit, push, deploy to VPS</span>
+  </label>
+</div>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2>Risk & Notes</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Data migration</td><td>Existing 70 VPS rows mapped: <code>PRE_CONSTRUCTION → OBC</code>, <code>CONSTRUCTION → KONSTRUKSI</code>, <code>ENERGIZED → COD</code></td></tr>
+  <tr><td>Type migration</td><td><code>POWER_PLANT → KIT</code>, <code>SUBSTATION → GI</code>, <code>TRANSMISSION_LINE → TRANS</code></td></tr>
+  <tr><td>No data loss</td><td>Migration adds columns and maps values — nothing is deleted</td></tr>
+  <tr><td>Breaking change</td><td>All existing data will be migrated in the same deploy</td></tr>
+  <tr><td>Excel row 0</td><td>Summary/count row automatically skipped — won't cause import errors</td></tr>
+  <tr><td>lat/lng in columns AS/AT</td><td>User will populate Latitude (AS) and Longitude (AT) in the Excel before importing. Required for non-Transmission Line projects — validation will flag missing values.</td></tr>
+  <tr><td>Relationships in AV/AW/AU</td><td>Line From (AV), Line To (AW) for Transmission Lines, and Related Projects (AU) use RUPTL Codes. Resolved to DB IDs in Pass 2 after all projects are upserted.</td></tr>
+  <tr><td>Upsert by ruptlCode</td><td>Re-importing the same Excel is safe — existing projects are updated, not duplicated</td></tr>
+  <tr><td>5,597 rows</td><td>Import runs in a loop with individual upserts. May take 30–60s on VPS. No timeout risk (NestJS default is 5 min).</td></tr>
+</table>
+
+</body>
+</html>

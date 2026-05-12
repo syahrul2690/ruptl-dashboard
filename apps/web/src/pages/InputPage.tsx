@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect, CSSProperties } from 'react';
 import { projectsApi } from '../lib/api';
 import {
-  ProjectStatus, ProjectType,
-  URGENCY_OPTIONS, PROVINCE_OPTIONS,
+  ProjectStage, ProjectType, STAGE_CONFIG,
+  STATUS_OPTIONS as STATUS_VALUES,
+  URGENCY_OPTIONS, PROVINCE_OPTIONS, REGION_OPTIONS,
 } from '../lib/types';
 
 // ── Shared atoms ──────────────────────────────────────────────────────────────
@@ -228,31 +229,35 @@ function ProjectPicker({ value, onChange, multi = false, placeholder, excludeIds
 function blank() {
   return {
     name: '', ruptlCode: '', type: '' as ProjectType | '',
-    subtype: '', status: '' as ProjectStatus | '',
-    province: '', island: '', gridSystem: '',
+    subtype: '', stage: '' as ProjectStage | '', status: 'On-track',
+    province: '', region: '', island: '', gridSystem: '',
     lat: '', lng: '',
     codTargetRUPTL: '', codKontraktual: '', codEstimasi: '',
     progressPlan: '0', progressRealisasi: '0',
-    issueType: 'None', capacity: '', capacityUnit: '',
+    issueType: 'Tidak ada Issue', capacity: '', capacityUnit: '',
     circuitLength: '', voltageLevel: '',
     lineFromId: '', lineToId: '',
     relatedProjects: [] as string[],
-    detail: '', urgencyCategory: [] as string[],
+    urgencyCategory: [] as string[],
+    detail: '',
   };
 }
 
-const TYPE_OPTIONS    = [
-  { value: 'POWER_PLANT',       label: 'Power Plant' },
-  { value: 'SUBSTATION',        label: 'Substation (Gardu Induk)' },
-  { value: 'TRANSMISSION_LINE', label: 'Transmission Line' },
+const TYPE_OPTIONS = [
+  { value: 'GI',          label: 'Gardu Induk (GI)' },
+  { value: 'TRANS',       label: 'Transmisi (TRANS)' },
+  { value: 'KIT',         label: 'KIT' },
+  { value: 'KIT_EBT',     label: 'KIT-EBT' },
+  { value: 'KIT_NONEBT',  label: 'KIT-NONEBT' },
+  { value: 'FSRU',        label: 'FSRU' },
+  { value: 'KIT_RELOKASI',label: 'KIT (Relokasi)' },
 ];
-const STATUS_OPTIONS  = [
-  { value: 'PRE_CONSTRUCTION', label: 'Pre-Construction' },
-  { value: 'CONSTRUCTION',     label: 'Construction' },
-  { value: 'ENERGIZED',        label: 'Energized' },
-];
-const ISLAND_OPTIONS  = ['Jawa','Sumatera','Kalimantan','Sulawesi','Papua','Nusa Tenggara','Maluku'].map(v => ({ value: v, label: v }));
-const ISSUE_OPTIONS   = ['None','Land Acquisition','Permit','Contractor','Finance','Design','Other'].map(v => ({ value: v, label: v }));
+const STAGE_OPTIONS = (Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][])
+  .map(([value, cfg]) => ({ value, label: cfg.label }));
+const STATUS_OPTIONS = STATUS_VALUES.map(v => ({ value: v, label: v }));
+const ISLAND_OPTIONS = ['Jawa','Sumatera','Kalimantan','Sulawesi','Papua','Nusa Tenggara','Maluku'].map(v => ({ value: v, label: v }));
+const REGION_OPTS    = REGION_OPTIONS.map(v => ({ value: v, label: v }));
+const ISSUE_OPTIONS  = ['Tidak ada Issue','Pembebasan Lahan','Perizinan','Konstruksi','Pendanaan','Kontrak','Engineering','Force Majeure','Lainnya'].map(v => ({ value: v, label: v }));
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Manual Form
@@ -271,8 +276,8 @@ function ManualForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.ruptlCode || !form.type || !form.status || !form.province) {
-      showToast('Lengkapi field wajib: Nama, RUPTL Code, Tipe, Status, Provinsi', 'error');
+    if (!form.name || !form.ruptlCode || !form.type || !form.stage || !form.province) {
+      showToast('Lengkapi field wajib: Nama, RUPTL Code, Tipe, Stage, Provinsi', 'error');
       return;
     }
     const plan   = parseFloat(form.progressPlan)      || 0;
@@ -281,8 +286,9 @@ function ManualForm() {
     try {
       await projectsApi.create({
         ...form,
-        lat:               parseFloat(form.lat as string)          || 0,
-        lng:               parseFloat(form.lng as string)          || 0,
+        stage:             form.stage as ProjectStage,
+        lat:               isTransmission ? null : (parseFloat(form.lat as string) || null),
+        lng:               isTransmission ? null : (parseFloat(form.lng as string) || null),
         progressPlan:      plan,
         progressRealisasi: actual,
         deviasi:           actual - plan,
@@ -300,7 +306,7 @@ function ManualForm() {
     } finally { setSaving(false); }
   };
 
-  const isTransmission = form.type === 'TRANSMISSION_LINE';
+  const isTransmission = form.type === 'TRANS';
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -321,7 +327,10 @@ function ManualForm() {
         <Field label="Sub-tipe">
           <Input value={form.subtype} onChange={set('subtype')} placeholder="e.g. SUTET 500kV" />
         </Field>
-        <Field label="Status *">
+        <Field label="Stage *">
+          <Select value={form.stage} onChange={set('stage')} options={STAGE_OPTIONS} />
+        </Field>
+        <Field label="Status Progress">
           <Select value={form.status} onChange={set('status')} options={STATUS_OPTIONS} />
         </Field>
         <Field label="Issue Type">
@@ -334,6 +343,9 @@ function ManualForm() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <Field label="Provinsi *">
           <Select value={form.province} onChange={set('province')} options={PROVINCE_OPTIONS.map(p => ({ value: p, label: p }))} />
+        </Field>
+        <Field label="Region">
+          <Select value={form.region} onChange={set('region')} options={REGION_OPTS} />
         </Field>
         <Field label="Pulau">
           <Select value={form.island} onChange={set('island')} options={ISLAND_OPTIONS} />
@@ -510,41 +522,51 @@ interface ApiCommitResult { inserted: number; skipped: number; total: number; re
 
 type ImportStage = 'idle' | 'previewing' | 'preview' | 'committing' | 'done';
 
-// Generate a CSV template blob and trigger browser download
+// Generate a CSV template that mirrors the Excel "ALL" sheet column structure
 function downloadTemplate() {
+  // Row 0: summary (blank in template), Row 1: headers (match Excel exactly), Row 2+: examples
   const headers = [
-    'ruptlCode','name','type','subtype','status',
-    'province','island','gridSystem','lat','lng',
-    'codTargetRUPTL','codKontraktual','codEstimasi',
-    'progressPlan','progressRealisasi','deviasi',
-    'capacity','capacityUnit','circuitLength','voltageLevel',
-    'issueType','urgencyCategory','detail',
-    // Relationship columns — use ruptlCode of target projects
-    'lineFromCode','lineToCode','relatedCodes',
+    'NO.','RUPTL CODE','NAMA PROYEK','TIPE PROYEK','REGION','LOKASI','SISTEM KELISTRIKAN',
+    'ACTUAL STAGE','STATUS','Prioritas','URGENSI',
+    'COD RUPTL','COD KONTRAKTUAL','COD ESTIMASI',
+    'RENCANA PROGRESS KONSTRUKSI \n(%)','REALISASI PROGRESS KONSTRUKSI \n(%)','DEVIASI',
+    'KAPASITAS','SATUAN','Tipe Issue','Issue Strategis',
+    'NOTIFIKASI','Keterangan BPO (Pembahasan Check Point)',
+    'Last Modified\nKeterangan BPO\n(Pembahasan Check point)',
+    'Comment',
+    // User-added columns
+    'Latitude','Longitude',
+    'Related Projects','Line From','Line To',
   ];
   const examples = [
-    // Power plant (no relationships needed)
-    ['SS-PP-003','PLTU Sumsel 2x660MW','power plant','PLTU','construction',
-     'Sumatera Selatan','Sumatera','Sumatera Selatan','-3.316','104.916',
-     'Q2 2025','Q3 2025','Q3 2025','80','80','0',
-     '1320','MW','','','None','Pemenuhan EBT;RUPTL','',
-     '','',''],
-    // Substation — linked as "related" to the power plant above
-    ['JT-G-002','GI Krian 500/150kV 2x500MVA','substation','GIS 500kV','pre-construction',
-     'Jawa Timur','Jawa','Jawa-Bali','-7.408','112.579',
-     'Q1 2026','Q1 2026','Q2 2026','20','15','-5',
-     '1000','MVA','','500kV','None','RUPTL','',
-     '','','SS-PP-003'],   // relatedCodes → references PLTU above
-    // Transmission line — lat/lng dikosongkan, posisi diambil dari lineFromCode & lineToCode
-    ['JT-T-001','SUTET 500kV Paiton – Krian','transmission line','SUTET 500kV','construction',
-     'Jawa Timur','Jawa','Jawa-Bali','','',
-     'Q3 2025','Q4 2025','Q1 2026','65','58','-7',
-     '','','485','500kV','None','RUPTL;Kehandalan Sistem','',
-     'SS-PP-003','JT-G-002',''],  // lineFromCode=PLTU, lineToCode=GI Krian
+    // GI example
+    ['1','SS-GI-001','GI Baru 150kV 2x60MVA','GI','SUMATERA','Sumatera Selatan','Sumatera Selatan',
+     '09. Konstruksi','On-track','',
+     'RUPTL','2025','Q3 2025','Q3 2025',
+     '65','58','-7',
+     '120','MVA','Tidak ada Issue','',
+     '','','','',
+     '-3.316','104.916','','',''],
+    // TRANS example — lat/lng kosong, isi Line From / Line To
+    ['2','SS-T-001','SUTT 150kV Palembang – Prabumulih','TRANS','SUMATERA','Sumatera Selatan','Sumatera Selatan',
+     '09. Konstruksi','Lagging','',
+     'Keandalan Sistem','2025','Q4 2025','Q4 2025',
+     '40','30','-10',
+     '','','Tidak ada Issue','',
+     '','','','',
+     '','','','SS-GI-001','SS-GI-002'],
+    // KIT example
+    ['3','SS-KIT-001','PLTU Sumsel 2x660MW','KIT','SUMATERA','Sumatera Selatan','Sumatera Selatan',
+     '08. LAKDAN','On-track','P1',
+     'Pemenuhan EBT','2026','Q1 2026','Q2 2026',
+     '20','20','0',
+     '1320','MW','Tidak ada Issue','',
+     '','','','',
+     '-3.5','104.5','SS-GI-001','',''],
   ];
   const rows = [headers, ...examples];
-  const csv  = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
@@ -633,58 +655,77 @@ function ExcelImport() {
 
       {/* Column guide + download template */}
       <div style={{ background: '#0D1526', border: '1px solid #1F2937', borderRadius: 8, padding: '12px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase' }}>
-            Kolom Wajib (Baris 1 = Header)
+            Panduan Kolom Excel
           </div>
           <button type="button" onClick={downloadTemplate} style={{ ...s.btnSecondary, fontSize: 11, padding: '3px 12px', flexShrink: 0 }}>
             ⬇ Download Template CSV
           </button>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 10 }}>
-          {['ruptlCode','name','type','subtype','status','province','island','gridSystem','lat','lng'].map(col => (
-            <code key={col} style={{ fontSize: 11, color: '#008BA0', fontFamily: 'monospace' }}>{col}</code>
-          ))}
+
+        {/* Sheet structure note */}
+        <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 10, lineHeight: 1.5 }}>
+          Gunakan sheet bernama <code style={{ color: '#a5f3fc', fontFamily: 'monospace' }}>ALL</code> (atau sheet pertama). Baris pertama header, data mulai baris kedua.
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>
-          Kolom Relasi Proyek (opsional)
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+
+        {/* Required columns */}
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>Kolom Wajib</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
           {[
-            { col: 'lineFromCode',  desc: 'ruptlCode proyek asal (untuk Transmission Line)' },
-            { col: 'lineToCode',    desc: 'ruptlCode proyek tujuan (untuk Transmission Line)' },
-            { col: 'relatedCodes',  desc: 'ruptlCode proyek terkait, pisahkan dengan titik koma (;)' },
+            { col: 'NAMA PROYEK',   desc: 'Nama lengkap proyek' },
+            { col: 'RUPTL CODE',    desc: 'Kode unik proyek (digunakan untuk upsert)' },
+            { col: 'ACTUAL STAGE',  desc: '01. OBC / 02. Centralized Planning (CP) / … / 10. COD' },
+            { col: 'TIPE PROYEK',   desc: 'GI · TRANS · KIT · KIT-EBT · KIT-NONEBT · FSRU · KIT (Relokasi)' },
+            { col: 'LOKASI',        desc: 'Nama provinsi' },
+            { col: 'Latitude',      desc: 'Wajib untuk GI & KIT — tambahkan di kolom AS' },
+            { col: 'Longitude',     desc: 'Wajib untuk GI & KIT — tambahkan di kolom AT' },
           ].map(({ col, desc }) => (
-            <div key={col} style={{ fontSize: 11, color: '#6B7280', display: 'flex', gap: 8 }}>
-              <code style={{ fontFamily: 'monospace', color: '#8B5CF6', flexShrink: 0 }}>{col}</code>
+            <div key={col} style={{ fontSize: 11, color: '#6B7280', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+              <code style={{ fontFamily: 'monospace', color: '#008BA0', flexShrink: 0, minWidth: 140 }}>{col}</code>
               <span>{desc}</span>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>
-          Nilai yang diterima
+
+        {/* Optional columns */}
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>Kolom Opsional Penting</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+          {[
+            { col: 'STATUS',                  desc: 'Leading · Lagging · On-track · Completed · Cancelled · Terminasi · Started' },
+            { col: 'URGENSI',                 desc: 'RUPTL · Pemenuhan EBT · Keandalan Sistem · Kerawanan Sistem · dsb.' },
+            { col: 'REGION',                  desc: 'JAMALI · SUMATERA · SULAWESI · KALIMANTAN · MAPA · NUSRA' },
+            { col: 'COD RUPTL',               desc: 'Target COD dari RUPTL' },
+            { col: 'COD KONTRAKTUAL',         desc: 'COD kontraktual' },
+            { col: 'COD ESTIMASI',            desc: 'Estimasi COD terkini' },
+            { col: 'Prioritas',               desc: 'Misal: P1, P0\', (PRB)' },
+            { col: 'NOTIFIKASI',              desc: 'NON KONSTRUKSI / green / red / orange' },
+            { col: 'Tipe Issue',              desc: 'Tidak ada Issue · Pembebasan Lahan · Perizinan · dsb.' },
+            { col: 'Issue Strategis',         desc: 'Uraian issue strategis (teks bebas)' },
+            { col: 'Keterangan BPO (Pembahasan Check Point)', desc: 'Catatan BPO' },
+            { col: 'Comment',                 desc: 'Komentar bebas' },
+          ].map(({ col, desc }) => (
+            <div key={col} style={{ fontSize: 11, color: '#6B7280', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+              <code style={{ fontFamily: 'monospace', color: '#94A3B8', flexShrink: 0, minWidth: 140 }}>{col}</code>
+              <span>{desc}</span>
+            </div>
+          ))}
         </div>
+
+        {/* Relationship columns */}
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#4B5563', textTransform: 'uppercase', marginBottom: 6 }}>Kolom Relasi (User-Added)</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>
-            <span style={{ color: '#9CA3AF', fontWeight: 600 }}>type:</span>{' '}
-            <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>power plant</code>{' · '}
-            <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>substation</code>{' · '}
-            <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>transmission line</code>
-          </div>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>
-            <span style={{ color: '#9CA3AF', fontWeight: 600 }}>status:</span>{' '}
-            <code style={{ fontFamily: 'monospace', color: '#10B981' }}>energized</code>{' · '}
-            <code style={{ fontFamily: 'monospace', color: '#10B981' }}>construction</code>{' · '}
-            <code style={{ fontFamily: 'monospace', color: '#10B981' }}>pre-construction</code>
-          </div>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>
-            <span style={{ color: '#9CA3AF', fontWeight: 600 }}>urgencyCategory / relatedCodes:</span>{' '}
-            pisahkan dengan titik koma (;) untuk lebih dari satu nilai
-          </div>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>
-            <span style={{ color: '#9CA3AF', fontWeight: 600 }}>lat / lng:</span>{' '}
-            wajib untuk <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>power plant</code> dan <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>substation</code> · kosongkan untuk <code style={{ fontFamily: 'monospace', color: '#F59E0B' }}>transmission line</code>
-          </div>
+          {[
+            { col: 'Related Projects', col2: '(kolom AU)', desc: 'RUPTL Code proyek terkait, pisahkan dengan titik koma (;)' },
+            { col: 'Line From',        col2: '(kolom AV)', desc: 'RUPTL Code GI/KIT asal — hanya untuk TRANS' },
+            { col: 'Line To',          col2: '(kolom AW)', desc: 'RUPTL Code GI/KIT tujuan — hanya untuk TRANS' },
+          ].map(({ col, col2, desc }) => (
+            <div key={col} style={{ fontSize: 11, color: '#6B7280', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+              <code style={{ fontFamily: 'monospace', color: '#8B5CF6', flexShrink: 0, minWidth: 100 }}>{col}</code>
+              <span style={{ color: '#4B5563', fontSize: 10 }}>{col2}</span>
+              <span>{desc}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -766,7 +807,7 @@ function ExcelImport() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                   <thead>
                     <tr style={{ background: '#0D1526' }}>
-                      {['RUPTL Code','Nama','Tipe','Status','Provinsi','Dari (lineFromCode)','Ke (lineToCode)','Terkait (relatedCodes)'].map(h => (
+                      {['RUPTL Code','Nama','Tipe','Stage','Status','Provinsi','Region','Line From','Line To','Terkait'].map(h => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#4B5563', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10, borderBottom: '1px solid #1F2937', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
@@ -775,13 +816,15 @@ function ExcelImport() {
                     {preview.preview.map((row, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #111827' }}>
                         <td style={{ ...s.td, fontFamily: 'monospace', color: '#008BA0' }}>{row.ruptlCode}</td>
-                        <td style={{ ...s.td, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</td>
-                        <td style={s.td}>{row.type?.replace(/_/g, ' ')}</td>
-                        <td style={s.td}>{row.status?.replace(/_/g, ' ')}</td>
+                        <td style={{ ...s.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</td>
+                        <td style={s.td}>{row.type}</td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', fontSize: 10 }}>{row.stage}</td>
+                        <td style={s.td}>{row.status}</td>
                         <td style={s.td}>{row.province}</td>
-                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6' }}>{row.lineFromCode ?? '—'}</td>
-                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6' }}>{row.lineToCode ?? '—'}</td>
-                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.relatedCodes ?? '—'}</td>
+                        <td style={s.td}>{row.region}</td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6', fontSize: 10 }}>{row.lineFromCode ?? '—'}</td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6', fontSize: 10 }}>{row.lineToCode ?? '—'}</td>
+                        <td style={{ ...s.td, fontFamily: 'monospace', color: '#8B5CF6', fontSize: 10, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.relatedCodes ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>

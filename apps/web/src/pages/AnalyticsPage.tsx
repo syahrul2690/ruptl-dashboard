@@ -5,10 +5,11 @@ import { useColors, useTheme } from '../context/ThemeContext';
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Summary {
   total:      number;
-  byStatus:   { status: string; count: number }[];
-  byType:     { type: string;   count: number }[];
+  byStage:    { stage: string; count: number }[];
+  byType:     { type: string;  count: number }[];
   byIsland:   { island: string; count: number }[];
   byProvince: { province: string; count: number }[];
+  byRegion:   { region: string; count: number }[];
   byTrack:    { energized: number; idle: number; delayed: number; on_track: number };
   capacity:   { total_mw: number; total_mva: number; total_km: number };
   mwByProvince:  { province:  string; value: number }[];
@@ -166,11 +167,14 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  ENERGIZED: 'Energized', CONSTRUCTION: 'Construction', PRE_CONSTRUCTION: 'Pre-Construction',
+const STAGE_LABELS: Record<string, string> = {
+  OBC: '01. OBC', CENTRALIZED_PLANNING: '02. CP', TVV: '03. TVV',
+  KOMITE_INVESTASI: '04. KI', RKAP: '05. RKAP', SKAI: '06. SKAI',
+  RENDAN: '07. RENDAN', LAKDAN: '08. LAKDAN', KONSTRUKSI: '09. Konstruksi', COD: '10. COD',
 };
 const TYPE_LABELS: Record<string, string> = {
-  POWER_PLANT: 'Power Plant', SUBSTATION: 'Substation', TRANSMISSION_LINE: 'Transmission Line',
+  GI: 'Gardu Induk', TRANS: 'Transmisi', KIT: 'KIT',
+  KIT_EBT: 'KIT-EBT', KIT_NONEBT: 'KIT-NONEBT', FSRU: 'FSRU', KIT_RELOKASI: 'KIT (Relokasi)',
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -199,12 +203,12 @@ export default function AnalyticsPage() {
   );
 
   const {
-    total, byStatus, byType, byIsland, byProvince, byTrack, capacity,
+    total, byStage, byType, byIsland, byProvince, byTrack, capacity,
     mwByProvince, kmByProvince, mwByGrid, mvaByGrid, kmByGrid,
   } = summary;
 
-  const statusData = byStatus.map(s => ({ label: STATUS_LABELS[s.status] ?? s.status, value: s.count }));
-  const typeData   = byType.map(t   => ({ label: TYPE_LABELS[t.type]     ?? t.type,   value: t.count }));
+  const stageData = byStage.map(s => ({ label: STAGE_LABELS[s.stage] ?? s.stage, value: s.count }));
+  const typeData  = byType.map(t  => ({ label: TYPE_LABELS[t.type]   ?? t.type,  value: t.count }));
   const trackData  = [
     { label: 'On Track',  value: byTrack.on_track,  color: '#10B981' },
     { label: 'Delayed',   value: byTrack.delayed,   color: '#EF4444' },
@@ -231,7 +235,7 @@ export default function AnalyticsPage() {
       {/* ── KPI row ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
         <KpiCard label="Total Proyek" value={total} color={c.textPrimary} highlight
-          sub={`${byTrack.energized} Energized · ${byStatus.find(s=>s.status==='CONSTRUCTION')?.count??0} Construction`} />
+          sub={`${byTrack.energized} COD · ${byStage.find(s=>s.stage==='KONSTRUKSI')?.count??0} Konstruksi`} />
         <KpiCard label="Total Kapasitas" value={Math.round(+capacity.total_mw)}  unit="MW"
           color="#10B981"  sub="Pembangkit (Power Plant)" />
         <KpiCard label="Panjang Jaringan" value={Math.round(+capacity.total_km)}  unit="km"
@@ -244,10 +248,10 @@ export default function AnalyticsPage() {
 
       {/* ── Donut row ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
-        <ChartCard title="Status Proyek" subtitle="Tahap pelaksanaan">
+        <ChartCard title="Stage Proyek" subtitle="Tahapan pelaksanaan">
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <DonutChart data={statusData} colors={['#3B82F6','#F59E0B','#10B981']} size={130} />
-            <Legend items={statusData.map((d,i) => ({ ...d, color: ['#3B82F6','#F59E0B','#10B981'][i] }))} />
+            <DonutChart data={stageData} colors={['#94A3B8','#A78BFA','#818CF8','#60A5FA','#38BDF8','#34D399','#86EFAC','#FCD34D','#F59E0B','#10B981']} size={130} />
+            <Legend items={stageData.map((d,i) => ({ ...d, color: ['#94A3B8','#A78BFA','#818CF8','#60A5FA','#38BDF8','#34D399','#86EFAC','#FCD34D','#F59E0B','#10B981'][i] }))} />
           </div>
         </ChartCard>
 

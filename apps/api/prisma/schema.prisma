@@ -13,16 +13,27 @@ enum Role {
   MANAGEMENT
 }
 
-enum ProjectStatus {
-  ENERGIZED
-  CONSTRUCTION
-  PRE_CONSTRUCTION
+enum ProjectStage {
+  OBC
+  CENTRALIZED_PLANNING
+  TVV
+  KOMITE_INVESTASI
+  RKAP
+  SKAI
+  RENDAN
+  LAKDAN
+  KONSTRUKSI
+  COD
 }
 
 enum ProjectType {
-  POWER_PLANT
-  SUBSTATION
-  TRANSMISSION_LINE
+  GI
+  TRANS
+  KIT
+  KIT_EBT
+  KIT_NONEBT
+  FSRU
+  KIT_RELOKASI
 }
 
 model User {
@@ -40,47 +51,56 @@ model User {
 }
 
 model Project {
-  id                String        @id @default(cuid())
+  id                String       @id @default(cuid())
   name              String
   type              ProjectType
-  subtype           String
-  ruptlCode         String        @unique
-  status            ProjectStatus
+  subtype           String       @default("")
+  ruptlCode         String       @unique
+  stage             ProjectStage
+  status            String       @default("On-track")
+  priority          String?
   codTargetRUPTL    String?
   codKontraktual    String?
   codEstimasi       String?
-  issueType         String        @default("None")
-  progressPlan      Float         @default(0)
-  progressRealisasi Float         @default(0)
-  deviasi           Float         @default(0)
+  issueType         String       @default("Tidak ada Issue")
+  issueStrategic    String?
+  progressPlan      Float        @default(0)
+  progressRealisasi Float        @default(0)
+  deviasi           Float        @default(0)
   lat               Float?
   lng               Float?
-  island            String
-  province          String
-  gridSystem        String
+  island            String       @default("")
+  region            String       @default("")
+  province          String       @default("")
+  gridSystem        String       @default("")
   capacity          Float?
   capacityUnit      String?
   circuitLength     Float?
   voltageLevel      String?
   lineFromId        String?
   lineToId          String?
+  notification      String?
+  bpoNotes          String?
+  bpoLastModified   DateTime?
+  comment           String?
   detail            String?
   urgencyCategory   String[]
   relatedProjects   String[]
   createdById       String
-  createdBy         User          @relation("CreatedBy", fields: [createdById], references: [id])
+  createdBy         User         @relation("CreatedBy", fields: [createdById], references: [id])
   updatedById       String?
-  updatedBy         User?         @relation("UpdatedBy", fields: [updatedById], references: [id])
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  updatedBy         User?        @relation("UpdatedBy", fields: [updatedById], references: [id])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   progress          ProjectProgress[]
 
-  @@index([status])
+  @@index([stage])
   @@index([province])
   @@index([island])
-  @@index([type, subtype])
-  @@index([province, status])
+  @@index([region])
+  @@index([type])
+  @@index([province, stage])
 }
 
 model ProjectProgress {

@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect, CSSProperties } from 'react';
-import { ProjectStatus, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
+import { ProjectStage, STAGE_CONFIG, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
 import { useColors } from '../context/ThemeContext';
 
 export interface ProjectCounts {
-  total:            number;
-  energized:        number;
-  construction:     number;
-  preCon:           number;
-  powerPlant:       number;
-  substation:       number;
-  transmissionLine: number;
+  total:           number;
+  cod:             number;
+  konstruksi:      number;
+  gi:              number;
+  trans:           number;
+  kit:             number;
 }
 
 interface Props {
@@ -20,9 +19,9 @@ interface Props {
   activeProvinces:  string[];
   onProvinceToggle: (prov: string) => void;
   onProvinceClear:  () => void;
-  activeStatuses:   ProjectStatus[];
-  onStatusToggle:   (s: ProjectStatus) => void;
-  onStatusClear:    () => void;
+  activeStages:     ProjectStage[];
+  onStageToggle:    (s: ProjectStage) => void;
+  onStageClear:     () => void;
 }
 
 function hexToRgb(hex: string) {
@@ -89,16 +88,17 @@ function ProvinceDropdown({ activeProvinces, onToggle, onClearAll }: {
   );
 }
 
-const STATUS_PILLS: { value: ProjectStatus; label: string; color: string }[] = [
-  { value: 'ENERGIZED',        label: 'Energized',        color: '#10B981' },
-  { value: 'CONSTRUCTION',     label: 'Construction',     color: '#F59E0B' },
-  { value: 'PRE_CONSTRUCTION', label: 'Pre-Construction', color: '#3B82F6' },
+// Show a subset of key stages as quick-filter pills
+const STAGE_PILLS: { value: ProjectStage; color: string }[] = [
+  { value: 'OBC',        color: STAGE_CONFIG.OBC.color },
+  { value: 'KONSTRUKSI', color: STAGE_CONFIG.KONSTRUKSI.color },
+  { value: 'COD',        color: STAGE_CONFIG.COD.color },
 ];
 
 export default function FilterBar({
   activeFilters, onToggle, onClearAll, projectCounts,
   activeProvinces, onProvinceToggle, onProvinceClear,
-  activeStatuses, onStatusToggle, onStatusClear,
+  activeStages, onStageToggle, onStageClear,
 }: Props) {
   void projectCounts;
   const c = useColors();
@@ -125,20 +125,20 @@ export default function FilterBar({
 
       <div style={{ width:1, height:24, background:c.border, alignSelf:'center', flexShrink:0 }} />
 
-      {/* Status filter */}
+      {/* Stage filter */}
       <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'nowrap', flexShrink:0 }}>
-        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>STATUS</span>
-        {STATUS_PILLS.map(({ value, label, color }) => {
-          const active = activeStatuses.includes(value);
+        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>STAGE</span>
+        {STAGE_PILLS.map(({ value, color }) => {
+          const active = activeStages.includes(value);
           return (
-            <button key={value} onClick={() => onStatusToggle(value)} style={pill(active, color)}>
+            <button key={value} onClick={() => onStageToggle(value)} style={pill(active, color)}>
               {active && <span style={{ width:5, height:5, borderRadius:'50%', background:color, display:'inline-block', flexShrink:0 }} />}
-              {label}
+              {STAGE_CONFIG[value].label}
             </button>
           );
         })}
-        {activeStatuses.length > 0 && (
-          <button onClick={onStatusClear} style={clearBtn}>✕</button>
+        {activeStages.length > 0 && (
+          <button onClick={onStageClear} style={clearBtn}>✕</button>
         )}
       </div>
 
@@ -149,7 +149,7 @@ export default function FilterBar({
         <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', color:c.textMuted, flexShrink:0, textTransform:'uppercase' }}>URGENCY</span>
         {URGENCY_OPTIONS.map(opt => {
           const active = activeFilters.includes(opt);
-          const color  = URGENCY_COLORS[opt];
+          const color  = URGENCY_COLORS[opt] ?? '#64748B';
           return (
             <button key={opt} onClick={() => onToggle(opt)} style={pill(active, color)}>
               {active && <span style={{ width:5, height:5, borderRadius:'50%', background:color, display:'inline-block', flexShrink:0 }} />}

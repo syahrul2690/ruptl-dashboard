@@ -13,13 +13,12 @@ const NAV_ITEMS: { path: string; label: string; roles: Role[] }[] = [
 ];
 
 const STAT_CHIPS = [
-  { key: 'total'           as const, label: 'Total',             darkColor: '#E5E7EB', lightColor: '#FFFFFF' },
-  { key: 'preCon'          as const, label: 'Pre-Construction',  darkColor: '#3B82F6', lightColor: '#60A5FA' },
-  { key: 'construction'    as const, label: 'Construction',      darkColor: '#F59E0B', lightColor: '#F6A821' },
-  { key: 'energized'       as const, label: 'Energized',         darkColor: '#10B981', lightColor: '#34D399' },
-  { key: 'powerPlant'      as const, label: 'Power Plant',       darkColor: '#10B981', lightColor: '#34D399' },
-  { key: 'substation'      as const, label: 'Gardu Induk',       darkColor: '#008BA0', lightColor: '#38BDF8' },
-  { key: 'transmissionLine'as const, label: 'Transmission Line', darkColor: '#F59E0B', lightColor: '#F6A821' },
+  { key: 'total'      as const, label: 'Total',      darkColor: '#E5E7EB', lightColor: '#FFFFFF' },
+  { key: 'cod'        as const, label: 'COD',        darkColor: '#10B981', lightColor: '#34D399' },
+  { key: 'konstruksi' as const, label: 'Konstruksi', darkColor: '#F59E0B', lightColor: '#F6A821' },
+  { key: 'gi'         as const, label: 'Gardu Induk',darkColor: '#008BA0', lightColor: '#38BDF8' },
+  { key: 'trans'      as const, label: 'Transmisi',  darkColor: '#3B82F6', lightColor: '#60A5FA' },
+  { key: 'kit'        as const, label: 'KIT',        darkColor: '#A78BFA', lightColor: '#C4B5FD' },
 ];
 
 export default function NavBar() {

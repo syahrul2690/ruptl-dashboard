@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, CSSProperties } from 'react';
 import * as XLSX from 'xlsx';
-import { Project, ProjectSlim, STATUS_CONFIG, ProjectStatus, ProjectType, URGENCY_OPTIONS } from '../lib/types';
+import { Project, ProjectSlim, STAGE_CONFIG, ProjectStage, STATUS_OPTIONS as STATUS_VALUES, TYPE_LABELS, URGENCY_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useColors } from '../context/ThemeContext';
@@ -279,7 +279,7 @@ function Field({ label, value, highlight }: { label: string; value?: string | nu
 }
 
 function typeLabel(type: string) {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+  return TYPE_LABELS[type as keyof typeof TYPE_LABELS] ?? type.replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
 }
 
 // ── Edit-form atoms ───────────────────────────────────────────────────────────
@@ -314,20 +314,21 @@ function ETextarea({ value, onChange, placeholder }: { value:string; onChange:(v
   );
 }
 
-const STATUS_OPTIONS = [
-  { value: 'PRE_CONSTRUCTION', label: 'Pre-Construction' },
-  { value: 'CONSTRUCTION',     label: 'Construction'     },
-  { value: 'ENERGIZED',        label: 'Energized'        },
-];
+const STAGE_OPTIONS = (Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][])
+  .map(([value, cfg]) => ({ value, label: cfg.label }));
+
+const STATUS_EDIT_OPTIONS = STATUS_VALUES.map(v => ({ value: v, label: v }));
+
 const ISSUE_OPTIONS = [
-  { value: 'None',            label: 'None'            },
-  { value: 'Land Acquisition',label: 'Land Acquisition' },
-  { value: 'Permit',          label: 'Permit'          },
-  { value: 'Construction',    label: 'Construction'    },
-  { value: 'Funding',         label: 'Funding'         },
-  { value: 'Contract',        label: 'Contract'        },
-  { value: 'Engineering',     label: 'Engineering'     },
-  { value: 'Force Majeure',   label: 'Force Majeure'   },
+  { value: 'Tidak ada Issue',  label: 'Tidak ada Issue'  },
+  { value: 'Pembebasan Lahan', label: 'Pembebasan Lahan' },
+  { value: 'Perizinan',        label: 'Perizinan'        },
+  { value: 'Konstruksi',       label: 'Konstruksi'       },
+  { value: 'Pendanaan',        label: 'Pendanaan'        },
+  { value: 'Kontrak',          label: 'Kontrak'          },
+  { value: 'Engineering',      label: 'Engineering'      },
+  { value: 'Force Majeure',    label: 'Force Majeure'    },
+  { value: 'Lainnya',          label: 'Lainnya'          },
 ];
 
 // ── Mini project picker ───────────────────────────────────────────────────────
@@ -389,7 +390,7 @@ function ProjectPicker({ slimProjects, value, onChange, multi = false, excludeId
               onMouseEnter={e => (e.currentTarget.style.background = c.hoverBg)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
               <div style={{ color:c.textPrimary, fontWeight:500 }}>{p.name}</div>
-              <div style={{ color:c.textMuted, fontSize:10 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
+              <div style={{ color:c.textMuted, fontSize:10 }}>{typeLabel(p.type)} · {p.province}</div>
             </div>
           ))}
         </div>
@@ -440,8 +441,14 @@ interface EditFormProps {
   onSaved: (p: Project) => void; onCancel: () => void; isAdmin: boolean;
 }
 function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFormProps) {
-  const [status,          setStatus]         = useState<string>(project.status);
-  const [issueType,       setIssueType]      = useState(project.issueType ?? 'None');
+  const [stage,           setStage]          = useState<ProjectStage>(project.stage);
+  const [status,          setStatus]         = useState<string>(project.status ?? 'On-track');
+  const [issueType,       setIssueType]      = useState(project.issueType ?? 'Tidak ada Issue');
+  const [priority,        setPriority]       = useState(project.priority        ?? '');
+  const [notification,    setNotification]   = useState(project.notification    ?? '');
+  const [issueStrategic,  setIssueStrategic] = useState(project.issueStrategic  ?? '');
+  const [bpoNotes,        setBpoNotes]       = useState(project.bpoNotes        ?? '');
+  const [comment,         setComment]        = useState(project.comment         ?? '');
   const [plan,            setPlan]           = useState(String(project.progressPlan      ?? 0));
   const [real,            setReal]           = useState(String(project.progressRealisasi ?? 0));
   const [cod,             setCod]            = useState(project.codTargetRUPTL   ?? '');
@@ -469,16 +476,21 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
     setSaving(true); setErr(null);
     try {
       const payload: Record<string, any> = {
-        status, issueType,
+        stage, status, issueType,
+        priority: priority || null,
+        notification: notification || null,
+        issueStrategic: issueStrategic || null,
+        bpoNotes: bpoNotes || null,
+        comment: comment || null,
         progressPlan: planN, progressRealisasi: realN, deviasi: dev,
         codTargetRUPTL: cod || null, codKontraktual: codK || null, codEstimasi: codE || null,
         detail: detail || null, urgencyCategory: urgency,
       };
-      if (isAdmin && project.type !== 'TRANSMISSION_LINE') {
+      if (isAdmin && project.type !== 'TRANS') {
         payload.lat = parseFloat(lat) || null;
         payload.lng = parseFloat(lng) || null;
       }
-      if (project.type === 'TRANSMISSION_LINE') {
+      if (project.type === 'TRANS') {
         payload.lineFromId = lineFromId || null;
         payload.lineToId   = lineToId   || null;
       }
@@ -494,8 +506,10 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
 
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:14 }}>
-      <div><ELabel>Status</ELabel><ESelect value={status} onChange={setStatus} options={STATUS_OPTIONS} /></div>
+      <div><ELabel>Stage</ELabel><ESelect value={stage} onChange={v => setStage(v as ProjectStage)} options={STAGE_OPTIONS} /></div>
+      <div><ELabel>Status Progress</ELabel><ESelect value={status} onChange={setStatus} options={STATUS_EDIT_OPTIONS} /></div>
       <div><ELabel>Issue Type</ELabel><ESelect value={issueType} onChange={setIssueType} options={ISSUE_OPTIONS} /></div>
+      <div><ELabel>Prioritas</ELabel><EInput value={priority} onChange={setPriority} placeholder="e.g. P1, P2, Prioritas Nasional" /></div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
         <div><ELabel>Progress Plan (%)</ELabel><EInput type="number" value={plan} onChange={setPlan} placeholder="0–100" /></div>
@@ -516,7 +530,7 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
       <div><ELabel>COD Kontraktual</ELabel><EInput value={codK} onChange={setCodK} placeholder="e.g. 2025-Q4" /></div>
       <div><ELabel>COD Estimasi</ELabel><EInput value={codE} onChange={setCodE} placeholder="e.g. 2026-Q1" /></div>
 
-      {project.type === 'TRANSMISSION_LINE' && (
+      {project.type === 'TRANS' && (
         <>
           <div>
             <ELabel>Dari (Gardu / Pembangkit Asal)</ELabel>
@@ -534,7 +548,7 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
         <ProjectPicker slimProjects={slimProjects} value={relatedProjects} onChange={v => setRelatedProjects(v as string[])} multi excludeIds={[project.id]} placeholder="Cari proyek terkait…" />
       </div>
 
-      {isAdmin && project.type !== 'TRANSMISSION_LINE' && (
+      {isAdmin && project.type !== 'TRANS' && (
         <div>
           <ELabel>Koordinat (Latitude, Longitude)</ELabel>
           <div style={{ fontSize:10, color:c.textMuted, marginBottom:6 }}>Paste dari Google Maps langsung ke kolom Latitude</div>
@@ -572,6 +586,10 @@ function EditForm({ project, slimProjects, onSaved, onCancel, isAdmin }: EditFor
         </div>
       </div>
 
+      <div><ELabel>Notifikasi</ELabel><EInput value={notification} onChange={setNotification} placeholder="Nomor notifikasi…" /></div>
+      <div><ELabel>Issue Strategis</ELabel><ETextarea value={issueStrategic} onChange={setIssueStrategic} placeholder="Uraian issue strategis…" /></div>
+      <div><ELabel>Catatan BPO</ELabel><ETextarea value={bpoNotes} onChange={setBpoNotes} placeholder="Keterangan BPO / pembahasan check point…" /></div>
+      <div><ELabel>Comment</ELabel><ETextarea value={comment} onChange={setComment} placeholder="Comment…" /></div>
       <div><ELabel>Catatan / Detail</ELabel><ETextarea value={detail} onChange={setDetail} placeholder="Keterangan tambahan tentang proyek…" /></div>
 
       <div style={{ borderTop:`1px solid ${c.border}`, paddingTop:12 }}>
@@ -655,7 +673,7 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
     );
   }
 
-  const cfg      = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+  const cfg      = STAGE_CONFIG[project.stage] ?? STAGE_CONFIG.OBC;
   const dev      = project.deviasi;
   const devColor = dev > 0 ? '#10B981' : dev < 0 ? '#EF4444' : c.textSec;
   const devLabel = dev > 0 ? `+${dev}%` : `${dev}%`;
@@ -755,9 +773,12 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
 
           <div style={{ height:1, background:c.divider }} />
           <div style={{ padding:'14px 20px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+            <Field label="Status Progress" value={project.status} />
+            {project.priority && <Field label="Prioritas" value={project.priority} />}
+            {project.notification && <Field label="Notifikasi" value={project.notification} />}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
               <span style={{ fontSize:11, color:c.textSec }}>Issue Type</span>
-              <span style={{ fontSize:12, fontWeight:600, color: project.issueType === 'None' ? '#10B981' : '#EF4444' }}>{project.issueType}</span>
+              <span style={{ fontSize:12, fontWeight:600, color: project.issueType === 'Tidak ada Issue' ? '#10B981' : '#EF4444' }}>{project.issueType}</span>
             </div>
           </div>
 
@@ -771,6 +792,34 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
             </div>
           </div>
 
+          {project.issueStrategic && (
+            <>
+              <div style={{ height:1, background:c.divider }} />
+              <div style={{ padding:'14px 20px' }}>
+                <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:c.textMuted, marginBottom:8 }}>Issue Strategis</div>
+                <p style={{ fontSize:12, color:c.textSec, lineHeight:1.6 }}>{project.issueStrategic}</p>
+              </div>
+            </>
+          )}
+          {project.bpoNotes && (
+            <>
+              <div style={{ height:1, background:c.divider }} />
+              <div style={{ padding:'14px 20px' }}>
+                <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:c.textMuted, marginBottom:8 }}>Catatan BPO</div>
+                <p style={{ fontSize:12, color:c.textSec, lineHeight:1.6 }}>{project.bpoNotes}</p>
+                {project.bpoLastModified && <p style={{ fontSize:10, color:c.textMuted, marginTop:4 }}>Last modified: {new Date(project.bpoLastModified).toLocaleDateString('id-ID')}</p>}
+              </div>
+            </>
+          )}
+          {project.comment && (
+            <>
+              <div style={{ height:1, background:c.divider }} />
+              <div style={{ padding:'14px 20px' }}>
+                <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:c.textMuted, marginBottom:8 }}>Comment</div>
+                <p style={{ fontSize:12, color:c.textSec, lineHeight:1.6 }}>{project.comment}</p>
+              </div>
+            </>
+          )}
           {project.detail && (
             <>
               <div style={{ height:1, background:c.divider }} />
@@ -789,7 +838,7 @@ export default function DetailPanel({ project, loading, slimProjects, onSelectPr
               <div style={{ padding:'14px 20px' }}>
                 <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:c.textMuted, marginBottom:10 }}>Rantai Evakuasi / Proyek Terkait</div>
                 {related.map(rp => {
-                  const rpCfg = STATUS_CONFIG[rp.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+                  const rpCfg = STAGE_CONFIG[rp.stage] ?? STAGE_CONFIG.OBC;
                   return (
                     <div key={rp.id} onClick={() => onSelectProject(rp)}
                       style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:6, background:c.bgInput, border:`1px solid ${c.border}`, marginBottom:6, cursor:'pointer' }}

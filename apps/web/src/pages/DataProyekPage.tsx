@@ -1,15 +1,22 @@
 import { useState, useEffect, useCallback, CSSProperties } from 'react';
-import { Project, ProjectStatus, ProjectType, STATUS_CONFIG, URGENCY_OPTIONS, URGENCY_COLORS, PROVINCE_OPTIONS } from '../lib/types';
+import { Project, ProjectStage, ProjectType, STAGE_CONFIG, STATUS_OPTIONS as STATUS_VALUES, TYPE_LABELS, URGENCY_OPTIONS, PROVINCE_OPTIONS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useColors } from '../context/ThemeContext';
 
 const PAGE_SIZE = 25;
-const TYPE_LABELS: Record<ProjectType, string> = {
-  POWER_PLANT: 'Pembangkit',
-  SUBSTATION: 'Gardu Induk',
-  TRANSMISSION_LINE: 'SUTT/SUTET',
-};
+
+const ISSUE_OPTIONS = [
+  { value: 'Tidak ada Issue',  label: 'Tidak ada Issue'  },
+  { value: 'Pembebasan Lahan', label: 'Pembebasan Lahan' },
+  { value: 'Perizinan',        label: 'Perizinan'        },
+  { value: 'Konstruksi',       label: 'Konstruksi'       },
+  { value: 'Pendanaan',        label: 'Pendanaan'        },
+  { value: 'Kontrak',          label: 'Kontrak'          },
+  { value: 'Engineering',      label: 'Engineering'      },
+  { value: 'Force Majeure',    label: 'Force Majeure'    },
+  { value: 'Lainnya',          label: 'Lainnya'          },
+];
 
 export default function DataProyekPage() {
   const { user } = useAuth();
@@ -19,7 +26,7 @@ export default function DataProyekPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<ProjectStatus | ''>('');
+  const [filterStage, setFilterStage] = useState<ProjectStage | ''>('');
   const [filterType, setFilterType] = useState<ProjectType | ''>('');
   const [filterProvince, setFilterProvince] = useState('');
   const [sortField, setSortField] = useState<keyof Project>('name');
@@ -37,7 +44,6 @@ export default function DataProyekPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Fetch projects ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -48,7 +54,7 @@ export default function DataProyekPage() {
         order: sortDir,
       };
       if (search) params.search = search;
-      if (filterStatus) params.status = filterStatus;
+      if (filterStage) params.stage = filterStage;
       if (filterType) params.type = filterType;
       if (filterProvince) params.province = filterProvince;
 
@@ -60,11 +66,10 @@ export default function DataProyekPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus, filterType, filterProvince, sortField, sortDir]);
+  }, [page, search, filterStage, filterType, filterProvince, sortField, sortDir]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Sort handler ────────────────────────────────────────────────────────────
   const handleSort = (field: keyof Project) => {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -79,7 +84,6 @@ export default function DataProyekPage() {
   const startRow = (page - 1) * PAGE_SIZE + 1;
   const endRow = Math.min(page * PAGE_SIZE, total);
 
-  // ── Delete handler ──────────────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
@@ -95,8 +99,7 @@ export default function DataProyekPage() {
     }
   };
 
-  // ── Edit saved handler ──────────────────────────────────────────────────────
-  const handleEditSaved = (updated: Project) => {
+  const handleEditSaved = (_updated: Project) => {
     setEditProject(null);
     showToast('Proyek berhasil diperbarui', true);
     fetchData();
@@ -104,7 +107,6 @@ export default function DataProyekPage() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', background:c.bgPage }}>
-      {/* Toast */}
       {toast && (
         <div style={{
           position:'fixed', top:70, right:20, zIndex:9999,
@@ -123,7 +125,6 @@ export default function DataProyekPage() {
           <span style={{ fontSize:12, color:c.textMuted }}>{total} proyek</span>
         </div>
 
-        {/* Search + Filters row */}
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
           <input
             type="text"
@@ -136,14 +137,14 @@ export default function DataProyekPage() {
             }}
           />
           <select
-            value={filterStatus}
-            onChange={e => { setFilterStatus(e.target.value as ProjectStatus | ''); setPage(1); }}
+            value={filterStage}
+            onChange={e => { setFilterStage(e.target.value as ProjectStage | ''); setPage(1); }}
             style={{ background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:6, padding:'8px 10px', fontSize:12, color:c.textPrimary, fontFamily:'inherit', outline:'none' }}
           >
-            <option value="">Semua Status</option>
-            <option value="PRE_CONSTRUCTION">Pre-Construction</option>
-            <option value="CONSTRUCTION">Construction</option>
-            <option value="ENERGIZED">Energized</option>
+            <option value="">Semua Stage</option>
+            {(Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][]).map(([v, cfg]) => (
+              <option key={v} value={v}>{cfg.label}</option>
+            ))}
           </select>
           <select
             value={filterType}
@@ -151,9 +152,9 @@ export default function DataProyekPage() {
             style={{ background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:6, padding:'8px 10px', fontSize:12, color:c.textPrimary, fontFamily:'inherit', outline:'none' }}
           >
             <option value="">Semua Tipe</option>
-            <option value="POWER_PLANT">Pembangkit</option>
-            <option value="SUBSTATION">Gardu Induk</option>
-            <option value="TRANSMISSION_LINE">SUTT/SUTET</option>
+            {(Object.entries(TYPE_LABELS) as [ProjectType, string][]).map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
           </select>
           <select
             value={filterProvince}
@@ -163,9 +164,9 @@ export default function DataProyekPage() {
             <option value="">Semua Provinsi</option>
             {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          {(search || filterStatus || filterType || filterProvince) && (
+          {(search || filterStage || filterType || filterProvince) && (
             <button
-              onClick={() => { setSearch(''); setFilterStatus(''); setFilterType(''); setFilterProvince(''); setPage(1); }}
+              onClick={() => { setSearch(''); setFilterStage(''); setFilterType(''); setFilterProvince(''); setPage(1); }}
               style={{ padding:'8px 14px', borderRadius:6, border:`1px solid ${c.borderInput}`, background:'transparent', color:c.textSec, fontSize:12, cursor:'pointer', fontFamily:'inherit', fontWeight:600 }}
             >Reset</button>
           )}
@@ -190,14 +191,15 @@ export default function DataProyekPage() {
             <thead>
               <tr style={{ background:c.bgInput, position:'sticky', top:0, zIndex:10 }}>
                 {[
-                  { key: 'ruptlCode' as keyof Project, label: 'RUPTL Code' },
-                  { key: 'name' as keyof Project, label: 'Nama Proyek' },
-                  { key: 'type' as keyof Project, label: 'Tipe' },
-                  { key: 'province' as keyof Project, label: 'Provinsi' },
-                  { key: 'status' as keyof Project, label: 'Status' },
-                  { key: 'progressPlan' as keyof Project, label: 'Plan %' },
+                  { key: 'ruptlCode'         as keyof Project, label: 'RUPTL Code' },
+                  { key: 'name'              as keyof Project, label: 'Nama Proyek' },
+                  { key: 'type'              as keyof Project, label: 'Tipe' },
+                  { key: 'province'          as keyof Project, label: 'Provinsi' },
+                  { key: 'stage'             as keyof Project, label: 'Stage' },
+                  { key: 'status'            as keyof Project, label: 'Status' },
+                  { key: 'progressPlan'      as keyof Project, label: 'Plan %' },
                   { key: 'progressRealisasi' as keyof Project, label: 'Real %' },
-                  { key: 'deviasi' as keyof Project, label: 'Deviasi' },
+                  { key: 'deviasi'           as keyof Project, label: 'Deviasi' },
                 ].map(col => (
                   <th
                     key={col.key}
@@ -219,7 +221,7 @@ export default function DataProyekPage() {
             </thead>
             <tbody>
               {projects.map(p => {
-                const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+                const cfg = STAGE_CONFIG[p.stage] ?? STAGE_CONFIG.OBC;
                 const devColor = p.deviasi > 0 ? '#10B981' : p.deviasi < 0 ? '#EF4444' : c.textSec;
                 return (
                   <tr key={p.id} style={{ borderBottom:`1px solid ${c.border}`, transition:'background 100ms' }}
@@ -228,7 +230,7 @@ export default function DataProyekPage() {
                   >
                     <td style={{ padding:'8px 12px', fontFamily:'monospace', fontSize:11, color:c.textSec, whiteSpace:'nowrap' }}>{p.ruptlCode}</td>
                     <td style={{ padding:'8px 12px', fontWeight:500, color:c.textPrimary, maxWidth:280, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</td>
-                    <td style={{ padding:'8px 12px', color:c.textSec, whiteSpace:'nowrap' }}>{TYPE_LABELS[p.type]}</td>
+                    <td style={{ padding:'8px 12px', color:c.textSec, whiteSpace:'nowrap' }}>{TYPE_LABELS[p.type] ?? p.type}</td>
                     <td style={{ padding:'8px 12px', color:c.textSec, whiteSpace:'nowrap' }}>{p.province}</td>
                     <td style={{ padding:'8px 12px', whiteSpace:'nowrap' }}>
                       <span style={{
@@ -239,6 +241,7 @@ export default function DataProyekPage() {
                         {cfg.label}
                       </span>
                     </td>
+                    <td style={{ padding:'8px 12px', color:c.textSec, whiteSpace:'nowrap', fontSize:11 }}>{p.status}</td>
                     <td style={{ padding:'8px 12px', fontFamily:'monospace', fontSize:11, color:c.textSec }}>{p.progressPlan}%</td>
                     <td style={{ padding:'8px 12px', fontFamily:'monospace', fontSize:11, color:c.textSec }}>{p.progressRealisasi}%</td>
                     <td style={{ padding:'8px 12px', fontFamily:'monospace', fontSize:11, fontWeight:700, color:devColor }}>
@@ -286,23 +289,23 @@ export default function DataProyekPage() {
               opacity: page <= 1 ? 0.5 : 1,
             }}>‹ Prev</button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let p: number;
+              let pg: number;
               if (totalPages <= 5) {
-                p = i + 1;
+                pg = i + 1;
               } else if (page <= 3) {
-                p = i + 1;
+                pg = i + 1;
               } else if (page >= totalPages - 2) {
-                p = totalPages - 4 + i;
+                pg = totalPages - 4 + i;
               } else {
-                p = page - 2 + i;
+                pg = page - 2 + i;
               }
               return (
-                <button key={p} onClick={() => setPage(p)} style={{
-                  padding:'5px 10px', borderRadius:5, border:`1px solid ${page === p ? c.accent : c.borderInput}`,
-                  background: page === p ? c.accent : 'transparent',
-                  color: page === p ? '#fff' : c.textPrimary,
+                <button key={pg} onClick={() => setPage(pg)} style={{
+                  padding:'5px 10px', borderRadius:5, border:`1px solid ${page === pg ? c.accent : c.borderInput}`,
+                  background: page === pg ? c.accent : 'transparent',
+                  color: page === pg ? '#fff' : c.textPrimary,
                   fontSize:11, cursor:'pointer', fontFamily:'inherit', fontWeight:600,
-                }}>{p}</button>
+                }}>{pg}</button>
               );
             })}
             <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{
@@ -315,12 +318,10 @@ export default function DataProyekPage() {
         </div>
       )}
 
-      {/* ── Edit Modal ─────────────────────────────────────────────────────── */}
       {editProject && (
         <EditModal project={editProject} onClose={() => setEditProject(null)} onSaved={handleEditSaved} />
       )}
 
-      {/* ── Delete Confirmation ────────────────────────────────────────────── */}
       {deleteId && (
         <div style={{
           position:'fixed', inset:0, zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center',
@@ -358,8 +359,9 @@ function EditModal({ project, onClose, onSaved }: {
   project: Project; onClose: () => void; onSaved: (p: Project) => void;
 }) {
   const c = useColors();
-  const [status, setStatus] = useState(project.status);
-  const [issueType, setIssueType] = useState(project.issueType ?? 'None');
+  const [stage, setStage] = useState<ProjectStage>(project.stage);
+  const [status, setStatus] = useState(project.status ?? 'On-track');
+  const [issueType, setIssueType] = useState(project.issueType ?? 'Tidak ada Issue');
   const [plan, setPlan] = useState(String(project.progressPlan ?? 0));
   const [real, setReal] = useState(String(project.progressRealisasi ?? 0));
   const [cod, setCod] = useState(project.codTargetRUPTL ?? '');
@@ -369,9 +371,6 @@ function EditModal({ project, onClose, onSaved }: {
   const [urgency, setUrgency] = useState<string[]>(project.urgencyCategory ?? []);
   const [lat, setLat] = useState(project.lat != null ? String(project.lat) : '');
   const [lng, setLng] = useState(project.lng != null ? String(project.lng) : '');
-  const [lineFromId, setLineFromId] = useState(project.lineFromId ?? '');
-  const [lineToId, setLineToId] = useState(project.lineToId ?? '');
-  const [relatedProjects, setRelatedProjects] = useState<string[]>(project.relatedProjects ?? []);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -386,42 +385,21 @@ function EditModal({ project, onClose, onSaved }: {
     setSaving(true); setErr(null);
     try {
       const payload: Record<string, any> = {
-        status, issueType,
+        stage, status, issueType,
         progressPlan: planN, progressRealisasi: realN, deviasi: dev,
         codTargetRUPTL: cod || null, codKontraktual: codK || null, codEstimasi: codE || null,
         detail: detail || null, urgencyCategory: urgency,
       };
-      if (project.type !== 'TRANSMISSION_LINE') {
+      if (project.type !== 'TRANS') {
         payload.lat = parseFloat(lat) || null;
         payload.lng = parseFloat(lng) || null;
       }
-      if (project.type === 'TRANSMISSION_LINE') {
-        payload.lineFromId = lineFromId || null;
-        payload.lineToId = lineToId || null;
-      }
-      payload.relatedProjects = relatedProjects;
       const res = await projectsApi.update(project.id, payload);
       onSaved(res.data);
     } catch (e: any) {
       setErr(e?.response?.data?.message ?? 'Gagal menyimpan');
     } finally { setSaving(false); }
   };
-
-  const STATUS_OPTIONS = [
-    { value: 'PRE_CONSTRUCTION', label: 'Pre-Construction' },
-    { value: 'CONSTRUCTION', label: 'Construction' },
-    { value: 'ENERGIZED', label: 'Energized' },
-  ];
-  const ISSUE_OPTIONS = [
-    { value: 'None', label: 'None' },
-    { value: 'Land Acquisition', label: 'Land Acquisition' },
-    { value: 'Permit', label: 'Permit' },
-    { value: 'Construction', label: 'Construction' },
-    { value: 'Funding', label: 'Funding' },
-    { value: 'Contract', label: 'Contract' },
-    { value: 'Engineering', label: 'Engineering' },
-    { value: 'Force Majeure', label: 'Force Majeure' },
-  ];
 
   const inputStyle: CSSProperties = {
     width:'100%', background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:5,
@@ -444,9 +422,16 @@ function EditModal({ project, onClose, onSaved }: {
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:14, maxHeight:'65vh', overflowY:'auto', paddingRight:8 }}>
-          <div><div style={labelStyle}>Status</div>
-            <select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)} style={inputStyle}>
-              {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <div><div style={labelStyle}>Stage</div>
+            <select value={stage} onChange={e => setStage(e.target.value as ProjectStage)} style={inputStyle}>
+              {(Object.entries(STAGE_CONFIG) as [ProjectStage, typeof STAGE_CONFIG[ProjectStage]][]).map(([v, cfg]) => (
+                <option key={v} value={v}>{cfg.label}</option>
+              ))}
+            </select>
+          </div>
+          <div><div style={labelStyle}>Status Progress</div>
+            <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
+              {STATUS_VALUES.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div><div style={labelStyle}>Issue Type</div>
@@ -477,7 +462,7 @@ function EditModal({ project, onClose, onSaved }: {
           <div><div style={labelStyle}>COD Estimasi</div>
             <input value={codE} onChange={e => setCodE(e.target.value)} placeholder="e.g. 2026-Q1" style={inputStyle} />
           </div>
-          {project.type !== 'TRANSMISSION_LINE' && (
+          {project.type !== 'TRANS' && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               <div><div style={labelStyle}>Latitude</div>
                 <input type="text" value={lat} onChange={e => setLat(e.target.value)} style={inputStyle} />

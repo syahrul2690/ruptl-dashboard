@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ProjectSlim, Project, ProjectStatus, STATUS_CONFIG } from '../lib/types';
+import { ProjectSlim, Project, ProjectStage, STAGE_CONFIG, TYPE_LABELS } from '../lib/types';
 import { projectsApi } from '../lib/api';
 import FilterBar, { ProjectCounts } from '../components/FilterBar';
 import MapPanel from '../components/MapPanel';
@@ -15,7 +15,7 @@ export default function MapPage() {
   const [loadingDetail,   setLoadingDetail]   = useState(false);
   const [activeFilters,   setActiveFilters]   = useState<string[]>([]);
   const [activeProvinces, setActiveProvinces] = useState<string[]>([]);
-  const [activeStatuses,  setActiveStatuses]  = useState<ProjectStatus[]>([]);
+  const [activeStages,    setActiveStages]    = useState<ProjectStage[]>([]);
   const [searchQuery,     setSearchQuery]     = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
   const c = useColors();
@@ -32,10 +32,7 @@ export default function MapPage() {
   useEffect(() => { selectedRef.current = selectedProject; }, [selectedProject]);
 
   const handleSelectProject = useCallback(async (slim: ProjectSlim) => {
-    if (selectedRef.current?.id === slim.id) {
-      setSelectedProject(null);
-      return;
-    }
+    if (selectedRef.current?.id === slim.id) { setSelectedProject(null); return; }
     setLoadingDetail(true);
     try {
       const res = await projectsApi.get(slim.id);
@@ -51,7 +48,7 @@ export default function MapPage() {
     setSelectedProject(updated);
     setProjects(prev => prev.map(p =>
       p.id === updated.id
-        ? { ...p, status: updated.status, issueType: updated.issueType, urgencyCategory: updated.urgencyCategory, lat: updated.lat, lng: updated.lng, lineFromId: updated.lineFromId, lineToId: updated.lineToId }
+        ? { ...p, stage: updated.stage, status: updated.status, issueType: updated.issueType, urgencyCategory: updated.urgencyCategory, lat: updated.lat, lng: updated.lng, lineFromId: updated.lineFromId, lineToId: updated.lineToId }
         : p
     ));
   }, []);
@@ -67,22 +64,20 @@ export default function MapPage() {
   }, [selectedProject]);
 
   const projectCounts = useMemo((): ProjectCounts => {
-    let total = 0, energized = 0, construction = 0, preCon = 0;
-    let powerPlant = 0, substation = 0, transmissionLine = 0;
+    let total = 0, cod = 0, konstruksi = 0, gi = 0, trans = 0, kit = 0;
     for (const p of projects) {
-      if (activeStatuses.length && !activeStatuses.includes(p.status)) continue;
-      if (activeFilters.length && !p.urgencyCategory.some(u => activeFilters.includes(u))) continue;
-      if (activeProvinces.length && !activeProvinces.includes(p.province)) continue;
+      if (activeStages.length   > 0 && !activeStages.includes(p.stage)) continue;
+      if (activeFilters.length  > 0 && !p.urgencyCategory.some(u => activeFilters.includes(u))) continue;
+      if (activeProvinces.length > 0 && !activeProvinces.includes(p.province)) continue;
       total++;
-      if (p.status === 'ENERGIZED') energized++;
-      else if (p.status === 'CONSTRUCTION') construction++;
-      else if (p.status === 'PRE_CONSTRUCTION') preCon++;
-      if (p.type === 'POWER_PLANT') powerPlant++;
-      else if (p.type === 'SUBSTATION') substation++;
-      else if (p.type === 'TRANSMISSION_LINE') transmissionLine++;
+      if (p.stage === 'COD')        cod++;
+      if (p.stage === 'KONSTRUKSI') konstruksi++;
+      if (p.type  === 'GI')         gi++;
+      else if (p.type === 'TRANS')  trans++;
+      else                          kit++;
     }
-    return { total, energized, construction, preCon, powerPlant, substation, transmissionLine };
-  }, [projects, activeFilters, activeProvinces, activeStatuses]);
+    return { total, cod, konstruksi, gi, trans, kit };
+  }, [projects, activeFilters, activeProvinces, activeStages]);
 
   useEffect(() => { setCounts(projectCounts); }, [projectCounts, setCounts]);
 
@@ -101,7 +96,6 @@ export default function MapPage() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', minHeight:0 }}>
-      {/* Filter bar */}
       <FilterBar
         activeFilters={activeFilters}
         onToggle={opt => setActiveFilters(prev => prev.includes(opt) ? prev.filter(f => f !== opt) : [...prev, opt])}
@@ -110,14 +104,12 @@ export default function MapPage() {
         activeProvinces={activeProvinces}
         onProvinceToggle={prov => setActiveProvinces(prev => prev.includes(prov) ? prev.filter(p => p !== prov) : [...prev, prov])}
         onProvinceClear={() => setActiveProvinces([])}
-        activeStatuses={activeStatuses}
-        onStatusToggle={s => setActiveStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
-        onStatusClear={() => setActiveStatuses([])}
+        activeStages={activeStages}
+        onStageToggle={s => setActiveStages(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+        onStageClear={() => setActiveStages([])}
       />
 
-      {/* Map + Detail panel row */}
       <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
-        {/* Map area */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden', borderRight:`1px solid ${c.border}`, position:'relative' }}>
           {loadingMap && (
             <div style={{ position:'absolute', inset:0, zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', background:`${c.bgPage}CC`, flexDirection:'column', gap:10 }}>
@@ -132,14 +124,11 @@ export default function MapPage() {
             onSelectProject={handleSelectProject}
             activeFilters={activeFilters}
             activeProvinces={activeProvinces}
-            activeStatuses={activeStatuses}
+            activeStages={activeStages}
           />
         </div>
 
-        {/* Right panel: search + detail */}
         <div style={{ width:400, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:c.bgCard }}>
-
-          {/* ── Search bar ── */}
           <div ref={searchRef} style={{ padding:'10px 12px', borderBottom:`1px solid ${c.border}`, flexShrink:0, position:'relative' }}>
             <input
               type="text"
@@ -147,56 +136,34 @@ export default function MapPage() {
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={e => e.key === 'Escape' && setSearchQuery('')}
               placeholder="Cari nama proyek atau provinsi…"
-              style={{
-                width:'100%', boxSizing:'border-box',
-                background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:6,
-                padding:'7px 32px 7px 10px', fontSize:12, color:c.textPrimary,
-                fontFamily:'inherit', outline:'none',
-              }}
+              style={{ width:'100%', boxSizing:'border-box', background:c.bgInput, border:`1px solid ${c.borderInput}`, borderRadius:6, padding:'7px 32px 7px 10px', fontSize:12, color:c.textPrimary, fontFamily:'inherit', outline:'none' }}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{
-                position:'absolute', right:20, top:'50%', transform:'translateY(-50%)',
-                background:'none', border:'none', color:c.textMuted, cursor:'pointer', fontSize:16, lineHeight:1, padding:2,
-              }}>×</button>
+              <button onClick={() => setSearchQuery('')} style={{ position:'absolute', right:20, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:c.textMuted, cursor:'pointer', fontSize:16, lineHeight:1, padding:2 }}>×</button>
             )}
-
             {searchResults.length > 0 && (
-              <div style={{
-                position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
-                background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6,
-                boxShadow:'0 8px 24px rgba(0,0,0,0.15)', maxHeight:320, overflowY:'auto',
-              }}>
+              <div style={{ position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500, background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', maxHeight:320, overflowY:'auto' }}>
                 {searchResults.map(p => {
-                  const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+                  const cfg = STAGE_CONFIG[p.stage] ?? STAGE_CONFIG.OBC;
                   return (
-                    <div key={p.id} onClick={() => handleSearchSelect(p)} style={{
-                      padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${c.border}`,
-                      display:'flex', alignItems:'center', gap:10,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = c.hoverBg)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <div key={p.id} onClick={() => handleSearchSelect(p)} style={{ padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${c.border}`, display:'flex', alignItems:'center', gap:10 }}
+                      onMouseEnter={e => (e.currentTarget.style.background = c.hoverBg)}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                       <span style={{ width:8, height:8, borderRadius:'50%', background:cfg.color, flexShrink:0 }} />
                       <div style={{ minWidth:0 }}>
                         <div style={{ fontSize:12, fontWeight:500, color:c.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                        <div style={{ fontSize:10, color:c.textMuted, marginTop:1 }}>{p.type.replace(/_/g,' ')} · {p.province}</div>
+                        <div style={{ fontSize:10, color:c.textMuted, marginTop:1 }}>{TYPE_LABELS[p.type] ?? p.type} · {p.province}</div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-
             {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-              <div style={{
-                position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500,
-                background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6,
-                padding:'12px', fontSize:12, color:c.textMuted, textAlign:'center',
-              }}>Tidak ada proyek ditemukan</div>
+              <div style={{ position:'absolute', top:'calc(100% - 2px)', left:12, right:12, zIndex:500, background:c.bgCard, border:`1px solid ${c.border}`, borderRadius:6, padding:'12px', fontSize:12, color:c.textMuted, textAlign:'center' }}>Tidak ada proyek ditemukan</div>
             )}
           </div>
 
-          {/* ── Detail panel ── */}
           <DetailPanel
             project={selectedProject}
             loading={loadingDetail}
@@ -208,7 +175,6 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Status bar */}
       <div style={{ display:'flex', alignItems:'center', gap:16, padding:'5px 20px', background:c.statusBar, borderTop:`1px solid ${c.border}`, flexShrink:0, flexWrap:'wrap' }}>
         <span style={{ fontSize:10, color:c.textMuted, display:'flex', alignItems:'center', gap:5 }}>
           <span style={{ width:6, height:6, borderRadius:'50%', background:'#10B981', boxShadow:'0 0 6px #10B981', animation:'pulse 2s infinite', display:'inline-block' }} />
@@ -226,8 +192,8 @@ export default function MapPage() {
           </span>
         ))}
         <span style={{ fontSize:10, color:c.textMuted }}>
-          {(activeFilters.length > 0 || activeProvinces.length > 0 || activeStatuses.length > 0)
-            ? `Filter aktif: ${[...activeStatuses.map(s => STATUS_CONFIG[s].label), ...activeProvinces, ...activeFilters].join(' · ')}`
+          {(activeFilters.length > 0 || activeProvinces.length > 0 || activeStages.length > 0)
+            ? `Filter aktif: ${[...activeStages.map(s => STAGE_CONFIG[s].label), ...activeProvinces, ...activeFilters].join(' · ')}`
             : `Menampilkan ${projects.length} proyek · Klik node untuk detail`}
         </span>
         <span style={{ fontSize:10, color:c.textMuted, marginLeft:'auto' }}>RUPTL 2024–2033 · PLN Pusat</span>

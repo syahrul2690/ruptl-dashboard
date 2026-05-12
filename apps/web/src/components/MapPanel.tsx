@@ -1,7 +1,7 @@
 import { useEffect, useRef, CSSProperties } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster';
-import { ProjectSlim, STATUS_CONFIG, ProjectStatus } from '../lib/types';
+import { ProjectSlim, STAGE_CONFIG, ProjectStage } from '../lib/types';
 
 interface Props {
   projects:        ProjectSlim[];
@@ -10,38 +10,34 @@ interface Props {
   onSelectProject: (p: ProjectSlim) => void;
   activeFilters:   string[];
   activeProvinces: string[];
-  activeStatuses:  ProjectStatus[];
+  activeStages:    ProjectStage[];
 }
 
-// Derive line color from voltage level embedded in subtype string
-// Falls back to status color if voltage can't be determined
 function lineVoltageColor(subtype: string): string {
   const s = subtype.toUpperCase();
-  if (s.includes('500')) return '#F97316'; // orange  — SUTET 500 kV
-  if (s.includes('275')) return '#A855F7'; // purple  — SUTT 275 kV
-  if (s.includes('150')) return '#38BDF8'; // sky     — SUTT 150 kV
-  if (s.includes('70'))  return '#4ADE80'; // lime    — SUTT 70 kV
-  return '#9CA3AF';                        // gray    — unknown
+  if (s.includes('500')) return '#F97316';
+  if (s.includes('275')) return '#A855F7';
+  if (s.includes('150')) return '#38BDF8';
+  if (s.includes('70'))  return '#4ADE80';
+  return '#9CA3AF';
 }
 
 function nodeColor(p: ProjectSlim): string {
-  return (STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION).color;
+  return (STAGE_CONFIG[p.stage] ?? STAGE_CONFIG.OBC).color;
 }
 
 function markerHtml(p: ProjectSlim, isSel: boolean, isHl: boolean): string {
   const color    = nodeColor(p);
-  const hasIssue = p.issueType !== 'None';
+  const hasIssue = p.issueType !== 'Tidak ada Issue' && p.issueType !== 'None';
   const size     = isSel ? 22 : isHl ? 18 : 14;
   const glow     = size + 12;
-  const isGI     = p.type === 'SUBSTATION';
+  const isGI     = p.type === 'GI';
   const shape    = isGI ? '' : 'border-radius:50%;';
   const rotate   = isGI ? 'transform:rotate(45deg);' : '';
 
-  // White ring when selected
   const selRing   = isSel
     ? `<div style="position:absolute;width:${size+10}px;height:${size+10}px;${shape}${rotate}border:1.5px solid rgba(255,255,255,0.65);"></div>`
     : '';
-  // Red border ring when issue exists — sits just outside the icon shape
   const issueRing = hasIssue
     ? `<div style="position:absolute;width:${size+5}px;height:${size+5}px;${shape}${rotate}border:2px solid #EF4444;box-shadow:0 0 7px rgba(239,68,68,0.55);z-index:2;"></div>`
     : '';
@@ -63,10 +59,10 @@ function markerHtml(p: ProjectSlim, isSel: boolean, isHl: boolean): string {
 }
 
 function tooltipHtml(p: ProjectSlim): string {
-  const cfg   = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.PRE_CONSTRUCTION;
+  const cfg   = STAGE_CONFIG[p.stage] ?? STAGE_CONFIG.OBC;
   const tType = p.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   return `<div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;max-width:230px;box-shadow:0 4px 16px rgba(0,0,0,0.6);">
-    <div style="font-size:10px;color:#008BA0;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;">${p.subtype} · ${p.island}</div>
+    <div style="font-size:10px;color:#008BA0;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;">${tType} · ${p.island}</div>
     <div style="font-size:13px;font-weight:600;color:#F9FAFB;line-height:1.3;margin-bottom:6px;">${p.name}</div>
     <div style="display:flex;align-items:center;gap:5px;">
       <div style="width:6px;height:6px;border-radius:50%;background:${cfg.color};box-shadow:0 0 4px ${cfg.color};"></div>
@@ -75,69 +71,48 @@ function tooltipHtml(p: ProjectSlim): string {
   </div>`;
 }
 
-function isVisible(p: ProjectSlim, filters: string[], provinces: string[], statuses: ProjectStatus[]): boolean {
-  if (statuses.length > 0 && !statuses.includes(p.status)) return false;
+function isVisible(p: ProjectSlim, filters: string[], provinces: string[], stages: ProjectStage[]): boolean {
+  if (stages.length   > 0 && !stages.includes(p.stage)) return false;
   if (filters.length  > 0 && !p.urgencyCategory.some(u => filters.includes(u))) return false;
   if (provinces.length > 0 && !provinces.includes(p.province)) return false;
   return true;
 }
 
-export default function MapPanel({ projects, selectedId, highlightedIds, onSelectProject, activeFilters, activeProvinces, activeStatuses }: Props) {
+export default function MapPanel({ projects, selectedId, highlightedIds, onSelectProject, activeFilters, activeProvinces, activeStages }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
   const clusterRef    = useRef<L.MarkerClusterGroup | null>(null);
   const markerMapRef  = useRef<Map<string, L.Marker>>(new Map());
   const lineMapRef    = useRef<Map<string, { poly: L.Polyline; glow?: L.Polyline; label: L.Marker }>>(new Map());
   const projectMapRef = useRef<Map<string, ProjectSlim>>(new Map());
-  const filtersRef    = useRef({ activeFilters, activeProvinces, activeStatuses });
+  const filtersRef    = useRef({ activeFilters, activeProvinces, activeStages });
   const onSelectRef   = useRef(onSelectProject);
 
-  // Keep refs in sync without causing effect re-runs
   projectMapRef.current = new Map(projects.map(p => [p.id, p]));
-  filtersRef.current = { activeFilters, activeProvinces, activeStatuses };
+  filtersRef.current = { activeFilters, activeProvinces, activeStages };
   onSelectRef.current = onSelectProject;
 
-  // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const container = containerRef.current;
-
-    const map = L.map(container, {
-      center: [-2.5, 118.0],
-      zoom: 5,
-      zoomControl: false,
-      attributionControl: true,
-    });
-
+    const map = L.map(container, { center: [-2.5, 118.0], zoom: 5, zoomControl: false, attributionControl: true });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://carto.com/" target="_blank">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
+      subdomains: 'abcd', maxZoom: 19,
     }).addTo(map);
-
     L.control.zoom({ position: 'topright' }).addTo(map);
     mapRef.current = map;
-
-    // Force Leaflet to recalculate container size (fixes flex-layout height issues)
     setTimeout(() => map.invalidateSize(), 0);
-
-    // Keep map sized correctly when the container resizes (e.g. panel open/close)
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(container);
-
     return () => ro.disconnect();
   }, []);
 
-  // Full rebuild when data or filters change
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Clear previous overlays
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current);
-      clusterRef.current = null;
-    }
+    if (clusterRef.current) { map.removeLayer(clusterRef.current); clusterRef.current = null; }
     lineMapRef.current.forEach(obj => {
       map.removeLayer(obj.poly);
       if (obj.glow) map.removeLayer(obj.glow);
@@ -146,21 +121,21 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
     lineMapRef.current.clear();
     markerMapRef.current.clear();
 
-    // ── Transmission lines (drawn below markers) ─────────────────────
+    // Transmission lines
     projects
-      .filter(p => p.type === 'TRANSMISSION_LINE' && p.lineFromId && p.lineToId && p.lineFromId !== p.lineToId)
+      .filter(p => p.type === 'TRANS' && p.lineFromId && p.lineToId && p.lineFromId !== p.lineToId)
       .forEach(line => {
         const from = projectMapRef.current.get(line.lineFromId!);
         const to   = projectMapRef.current.get(line.lineToId!);
         if (!from || !to || from.lat == null || from.lng == null || to.lat == null || to.lng == null) return;
 
-        const visible  = isVisible(line, activeFilters, activeProvinces, activeStatuses);
-        const isSel    = line.id === selectedId;
-        const isHl     = highlightedIds.includes(line.id);
-        const color    = lineVoltageColor(line.subtype);
-        const weight   = isSel ? 4.5 : isHl ? 3.5 : 2.5;
-        const opacity  = visible ? 1 : 0.06;
-        const dash     = line.status !== 'ENERGIZED' ? '8,5' : undefined;
+        const visible = isVisible(line, activeFilters, activeProvinces, activeStages);
+        const isSel   = line.id === selectedId;
+        const isHl    = highlightedIds.includes(line.id);
+        const color   = lineVoltageColor(line.subtype);
+        const weight  = isSel ? 4.5 : isHl ? 3.5 : 2.5;
+        const opacity = visible ? 1 : 0.06;
+        const dash    = line.stage !== 'COD' ? '8,5' : undefined;
         const latlngs: L.LatLngTuple[] = [[from.lat, from.lng], [to.lat, to.lng]];
 
         let glow: L.Polyline | undefined;
@@ -173,7 +148,6 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
         poly.on('mouseover', () => poly.setStyle({ weight: (poly as any).baseWeight + 2 }));
         poly.on('mouseout',  () => poly.setStyle({ weight: (poly as any).baseWeight }));
 
-        // Mid-point label
         const mid: L.LatLngTuple = [(from.lat! + to.lat!) / 2, (from.lng! + to.lng!) / 2];
         const lblIcon = L.divIcon({
           className: '',
@@ -181,20 +155,13 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
           iconAnchor: [30, 8],
         });
         const lbl = L.marker(mid, { icon: lblIcon, interactive: false, zIndexOffset: -100 }).addTo(map);
-
         lineMapRef.current.set(line.id, { poly, glow, label: lbl });
       });
 
-    // ── Point markers (clustered) ─────────────────────────────────────
-    if (typeof (L as any).markerClusterGroup !== 'function') {
-      console.error('[MapPanel] L.markerClusterGroup is not available — leaflet.markercluster may not have loaded');
-      return;
-    }
+    // Point markers
+    if (typeof (L as any).markerClusterGroup !== 'function') return;
     const cluster = (L as any).markerClusterGroup({
-      chunkedLoading: true,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      maxClusterRadius: 40,
+      chunkedLoading: true, spiderfyOnMaxZoom: true, showCoverageOnHover: false, maxClusterRadius: 40,
       iconCreateFunction: (c: any) => {
         const count = c.getChildCount();
         return L.divIcon({
@@ -205,110 +172,71 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
     }) as L.MarkerClusterGroup;
 
     projects
-      .filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat != null && p.lng != null)
+      .filter(p => p.type !== 'TRANS' && p.lat != null && p.lng != null)
       .forEach(p => {
         const isSel = p.id === selectedId;
         const isHl  = highlightedIds.includes(p.id);
-        const vis   = isVisible(p, activeFilters, activeProvinces, activeStatuses);
+        const vis   = isVisible(p, activeFilters, activeProvinces, activeStages);
         const sz    = isSel ? 34 : isHl ? 30 : 26;
-
-        const icon = L.divIcon({
-          className: '',
-          html: markerHtml(p, isSel, isHl),
-          iconSize:   [sz, sz],
-          iconAnchor: [sz / 2, sz / 2],
-        });
-
-        const marker = L.marker([p.lat!, p.lng!], {
-          icon,
-          opacity:       vis ? 1 : 0.08,
-          zIndexOffset:  isSel ? 1000 : 0,
-        });
-
+        const icon  = L.divIcon({ className: '', html: markerHtml(p, isSel, isHl), iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] });
+        const marker = L.marker([p.lat!, p.lng!], { icon, opacity: vis ? 1 : 0.08, zIndexOffset: isSel ? 1000 : 0 });
         marker.on('click', () => onSelectRef.current(p));
-        marker.bindTooltip(tooltipHtml(p), {
-          direction: 'top',
-          offset: [0, -(sz / 2 + 4)],
-          permanent: false,
-          className: 'pln-tooltip',
-        });
-
+        marker.bindTooltip(tooltipHtml(p), { direction: 'top', offset: [0, -(sz/2+4)], permanent: false, className: 'pln-tooltip' });
         markerMapRef.current.set(p.id, marker);
         cluster.addLayer(marker);
       });
 
     map.addLayer(cluster);
     clusterRef.current = cluster;
-    console.log(`[MapPanel] drew ${projects.filter(p => p.type !== 'TRANSMISSION_LINE' && p.lat != null).length} markers, ${projects.filter(p => p.type === 'TRANSMISSION_LINE').length} lines`);
-  }, [projects, activeFilters, activeProvinces, activeStatuses]);
+  }, [projects, activeFilters, activeProvinces, activeStages]);
 
-  // Lightweight update when only selection/highlight changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const filters = filtersRef.current;
 
-    // Update lines
     lineMapRef.current.forEach((obj, id) => {
       const line = projectMapRef.current.get(id);
       if (!line) return;
-      const isSel = id === selectedId;
-      const isHl = highlightedIds.includes(id);
-      const visible = isVisible(line, filters.activeFilters, filters.activeProvinces, filters.activeStatuses);
-      const color = lineVoltageColor(line.subtype);
+      const isSel      = id === selectedId;
+      const isHl       = highlightedIds.includes(id);
+      const visible    = isVisible(line, filters.activeFilters, filters.activeProvinces, filters.activeStages);
+      const color      = lineVoltageColor(line.subtype);
       const baseWeight = isSel ? 4.5 : isHl ? 3.5 : 2.5;
-      const opacity = visible ? 1 : 0.06;
-      const dash = line.status !== 'ENERGIZED' ? '8,5' : undefined;
-
-      obj.poly.setStyle({ color, weight: baseWeight, opacity, dashArray: dash });
+      const dash       = line.stage !== 'COD' ? '8,5' : undefined;
+      obj.poly.setStyle({ color, weight: baseWeight, opacity: visible ? 1 : 0.06, dashArray: dash });
       (obj.poly as any).baseWeight = baseWeight;
-
       if (isSel || isHl) {
         if (obj.glow) {
           obj.glow.setStyle({ color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash });
         } else {
           const latlngs = obj.poly.getLatLngs() as unknown as L.LatLngTuple[];
-          const glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash, interactive: false }).addTo(map);
-          obj.glow = glow;
+          obj.glow = L.polyline(latlngs, { color, weight: baseWeight + 7, opacity: visible ? 0.18 : 0, dashArray: dash, interactive: false }).addTo(map);
         }
       } else {
-        if (obj.glow) {
-          map.removeLayer(obj.glow);
-          obj.glow = undefined;
-        }
+        if (obj.glow) { map.removeLayer(obj.glow); obj.glow = undefined; }
       }
     });
 
-    // Update markers
     markerMapRef.current.forEach((marker, id) => {
       const p = projectMapRef.current.get(id);
       if (!p) return;
       const isSel = id === selectedId;
-      const isHl = highlightedIds.includes(id);
-      const vis = isVisible(p, filters.activeFilters, filters.activeProvinces, filters.activeStatuses);
-      const sz = isSel ? 34 : isHl ? 30 : 26;
-
-      marker.setIcon(L.divIcon({
-        className: '',
-        html: markerHtml(p, isSel, isHl),
-        iconSize: [sz, sz],
-        iconAnchor: [sz / 2, sz / 2],
-      }));
+      const isHl  = highlightedIds.includes(id);
+      const vis   = isVisible(p, filters.activeFilters, filters.activeProvinces, filters.activeStages);
+      const sz    = isSel ? 34 : isHl ? 30 : 26;
+      marker.setIcon(L.divIcon({ className: '', html: markerHtml(p, isSel, isHl), iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] }));
       marker.setOpacity(vis ? 1 : 0.08);
       marker.setZIndexOffset(isSel ? 1000 : 0);
     });
 
-    // Refresh cluster icons if supported
     if (clusterRef.current && typeof (clusterRef.current as any).refreshClusters === 'function') {
       (clusterRef.current as any).refreshClusters();
     }
   }, [selectedId, highlightedIds]);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-    };
+    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
   }, []);
 
   return (
@@ -316,11 +244,11 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
       <div ref={containerRef} style={mp.map} />
       <div style={mp.legend}>
         {[
-          { type: 'circle',  color: '#10B981', label: 'Power Plant' },
-          { type: 'diamond', color: '#008BA0', label: 'Substation'  },
-          { type: 'line',    color: '#F59E0B', label: 'SUTET 500kV' },
-          { type: 'line',    color: '#3B82F6', label: 'SUTT 150kV'  },
-          { type: 'circle',  color: '#EF4444', label: 'Has Issue'   },
+          { type: 'circle',  color: '#10B981', label: 'KIT / COD'    },
+          { type: 'diamond', color: '#008BA0', label: 'GI'           },
+          { type: 'line',    color: '#F97316', label: 'SUTET 500kV'  },
+          { type: 'line',    color: '#38BDF8', label: 'SUTT 150kV'   },
+          { type: 'circle',  color: '#EF4444', label: 'Has Issue'    },
         ].map(item => (
           <div key={item.label} style={{ display:'flex', alignItems:'center', gap:8 }}>
             {item.type === 'circle'  && <div style={{ width:10, height:10, borderRadius:'50%', background:item.color, boxShadow:`0 0 6px ${item.color}` }} />}
