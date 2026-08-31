@@ -34,6 +34,7 @@ enum ProjectType {
   KIT_NONEBT
   FSRU
   KIT_RELOKASI
+  KOMBINASI
 }
 
 model User {
@@ -86,6 +87,17 @@ model Project {
   detail            String?
   urgencyCategory   String[]
   relatedProjects   String[]
+
+  // ── PMO source fields (Update Data PMO.xlsx) ──────────────────────────────
+  uip               String       @default("")
+  codTargetYear     Int?
+  codEstimasiYear   Int?
+  openIssues        Int          @default(0)
+  overdueIssues     Int          @default(0)
+  amendmentCount    Int          @default(0)
+  eotCount          Int          @default(0)
+  voCount           Int          @default(0)
+
   createdById       String
   createdBy         User         @relation("CreatedBy", fields: [createdById], references: [id])
   updatedById       String?
@@ -101,6 +113,7 @@ model Project {
   @@index([region])
   @@index([type])
   @@index([province, stage])
+  @@index([uip])
 }
 
 model ProjectProgress {
@@ -115,6 +128,15 @@ model ProjectProgress {
 
   @@unique([projectId, yearMonth])
   @@index([projectId])
+}
+
+// Precomputed national-level aggregates that don't reduce to a single
+// project's row (issue category mix, amendment type mix). Populated by the
+// PMO import script; read as-is by AnalyticsService.
+model AnalyticsSnapshot {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
 }
 
 model AuditLog {

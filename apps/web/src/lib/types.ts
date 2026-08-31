@@ -19,7 +19,8 @@ export type ProjectType =
   | 'KIT_EBT'
   | 'KIT_NONEBT'
   | 'FSRU'
-  | 'KIT_RELOKASI';
+  | 'KIT_RELOKASI'
+  | 'KOMBINASI';
 
 export interface User {
   id:    string;
@@ -131,6 +132,7 @@ export const TYPE_LABELS: Record<ProjectType, string> = {
   KIT_NONEBT:  'KIT-NONEBT',
   FSRU:        'FSRU',
   KIT_RELOKASI:'KIT (Relokasi)',
+  KOMBINASI:   'Kombinasi',
 };
 
 // ── Urgency ───────────────────────────────────────────────────────────────────

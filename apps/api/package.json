@@ -7,7 +7,8 @@
     "start": "node dist/main",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "import:pmo": "ts-node -r tsconfig-paths/register scripts/import-pmo.ts"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^2.2.2",
