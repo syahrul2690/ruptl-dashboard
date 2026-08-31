@@ -96,9 +96,9 @@ export default function MapPanel({ projects, selectedId, highlightedIds, onSelec
     if (!containerRef.current || mapRef.current) return;
     const container = containerRef.current;
     const map = L.map(container, { center: [-2.5, 118.0], zoom: 5, zoomControl: false, attributionControl: true });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/" target="_blank">CARTO</a>',
-      subdomains: 'abcd', maxZoom: 19,
+    L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; <a href="https://www.esri.com/" target="_blank">Esri</a>',
+      maxZoom: 16,
     }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
     mapRef.current = map;
