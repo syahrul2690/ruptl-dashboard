@@ -2,7 +2,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.33.2
 
 # Install all workspace deps (cached layer)
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./

@@ -1,2 +1,11 @@
 packages:
   - 'apps/*'
+
+# pnpm >=10.9 reads build-script allowlists from here, not package.json
+onlyBuiltDependencies:
+  - bcrypt
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - esbuild
+  - '@nestjs/core'
