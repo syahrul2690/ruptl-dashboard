@@ -41,7 +41,7 @@ export class AnalyticsService {
     const [trackRaw, capacityRaw, pressureRaw] = await Promise.all([
       this.prisma.$queryRaw<any[]>`
         SELECT
-          SUM(CASE WHEN stage = 'COD'        THEN 1 ELSE 0 END)::int                                               AS energized,
+          SUM(CASE WHEN status = 'Selesai'   THEN 1 ELSE 0 END)::int                                               AS energized,
           SUM(CASE WHEN "progressRealisasi" <= 5 AND stage != 'COD' THEN 1 ELSE 0 END)::int                        AS idle,
           SUM(CASE WHEN deviasi < -3 AND stage != 'COD' THEN 1 ELSE 0 END)::int                                    AS delayed,
           SUM(CASE WHEN deviasi >= -3 AND "progressRealisasi" > 5 AND stage != 'COD' THEN 1 ELSE 0 END)::int       AS on_track
@@ -61,6 +61,51 @@ export class AnalyticsService {
           COALESCE(SUM("amendmentCount"), 0)::int  AS amendment_count,
           COALESCE(SUM("eotCount"), 0)::int        AS eot_count,
           COALESCE(SUM("voCount"), 0)::int         AS vo_count
+        FROM "Project"
+      `,
+    ]);
+
+    // ── Proyek terkendala: belum Selesai, dan salah satu ─────────────────────────
+    //    - isu lewat target ≥3   - COD mundur ≥2 thn dari RUPTL   - deviasi ≤ -10   - terminasi
+    // NB: filter pakai status (label PMO asli), bukan stage — import memetakan
+    // status 'Terminasi' ke stage enum 'COD' karena tidak ada bucket stage yang
+    // pas, jadi stage='COD' tidak bisa dipakai sebagai proxy "sudah tuntas".
+    const [constrainedRows, constrainedCountsRaw] = await Promise.all([
+      this.prisma.$queryRaw<any[]>`
+        SELECT
+          id, name, uip, province, type, status, stage,
+          "progressPlan", "progressRealisasi", deviasi,
+          "codTargetYear", "codEstimasiYear",
+          ("codEstimasiYear" - "codTargetYear")  AS cod_slip,
+          "openIssues", "overdueIssues"
+        FROM "Project"
+        WHERE status != 'Selesai' AND (
+          "overdueIssues" >= 3
+          OR ("codTargetYear" IS NOT NULL AND "codEstimasiYear" IS NOT NULL AND ("codEstimasiYear" - "codTargetYear") >= 2)
+          OR deviasi <= -10
+          OR status = 'Terminasi'
+        )
+        ORDER BY (
+          COALESCE("overdueIssues", 0)
+          + GREATEST(COALESCE("codEstimasiYear" - "codTargetYear", 0), 0) * 5
+          + GREATEST(-deviasi, 0)
+          + (CASE WHEN status = 'Terminasi' THEN 20 ELSE 0 END)
+        ) DESC
+        LIMIT 15
+      `,
+      this.prisma.$queryRaw<any[]>`
+        SELECT
+          SUM(CASE WHEN status != 'Selesai' AND "overdueIssues" >= 3 THEN 1 ELSE 0 END)::int AS isu_menumpuk,
+          SUM(CASE WHEN status != 'Selesai' AND "codTargetYear" IS NOT NULL AND "codEstimasiYear" IS NOT NULL
+                   AND ("codEstimasiYear" - "codTargetYear") >= 2 THEN 1 ELSE 0 END)::int AS cod_terlambat,
+          SUM(CASE WHEN status != 'Selesai' AND deviasi <= -10 THEN 1 ELSE 0 END)::int AS deviasi_signifikan,
+          SUM(CASE WHEN status = 'Terminasi' THEN 1 ELSE 0 END)::int AS terminasi,
+          SUM(CASE WHEN status != 'Selesai' AND (
+                "overdueIssues" >= 3
+                OR ("codTargetYear" IS NOT NULL AND "codEstimasiYear" IS NOT NULL AND ("codEstimasiYear" - "codTargetYear") >= 2)
+                OR deviasi <= -10
+                OR status = 'Terminasi'
+              ) THEN 1 ELSE 0 END)::int AS total
         FROM "Project"
       `,
     ]);
@@ -112,6 +157,15 @@ export class AnalyticsService {
 
       mwByProvince: mwByProvince.map(r => ({ province: r.province, value: Math.round(+(r._sum.capacity ?? 0)) })),
       kmByProvince: kmByProvince.map(r => ({ province: r.province, value: Math.round(+(r._sum.circuitLength ?? 0)) })),
+
+      constrainedProjects: constrainedRows.map(r => ({
+        id: r.id, name: r.name, uip: r.uip, province: r.province, type: r.type,
+        status: r.status, stage: r.stage,
+        progressPlan: r.progressPlan, progressRealisasi: r.progressRealisasi, deviasi: r.deviasi,
+        codTargetYear: r.codTargetYear, codEstimasiYear: r.codEstimasiYear, codSlip: r.cod_slip,
+        openIssues: r.openIssues, overdueIssues: r.overdueIssues,
+      })),
+      constrainedSummary: constrainedCountsRaw[0],
 
       issueByCategory: snapshot.issueByCategory,
       amendmentByType: snapshot.amendmentByType,

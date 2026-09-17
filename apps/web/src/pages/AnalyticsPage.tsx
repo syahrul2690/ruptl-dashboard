@@ -22,6 +22,13 @@ interface Summary {
   codPipeline:  { year: number; count: number }[];
   codSlippage:  { years: number; count: number }[];
   codWithTargetOnly: number;
+  constrainedProjects: {
+    id: string; name: string; uip: string; province: string; type: string; status: string; stage: string;
+    progressPlan: number; progressRealisasi: number; deviasi: number;
+    codTargetYear: number | null; codEstimasiYear: number | null; codSlip: number | null;
+    openIssues: number; overdueIssues: number;
+  }[];
+  constrainedSummary: { isu_menumpuk: number; cod_terlambat: number; deviasi_signifikan: number; terminasi: number; total: number };
   sourceFile: string | null;
   importedAt: string | null;
 }
@@ -273,6 +280,111 @@ function UipTable({ rows }: { rows: Summary['byUip'] }) {
   );
 }
 
+// ── Proyek terkendala — reason chips + table ─────────────────────────────────
+type ConstrainedProject = Summary['constrainedProjects'][number];
+
+function reasonsFor(p: ConstrainedProject): { label: string; color: string }[] {
+  const reasons: { label: string; color: string }[] = [];
+  if (p.status === 'Terminasi') reasons.push({ label: 'Terminasi', color: '#EF4444' });
+  if (p.codSlip !== null && p.codSlip >= 2) reasons.push({ label: `COD +${p.codSlip} thn`, color: '#F6A821' });
+  if (p.overdueIssues >= 3) reasons.push({ label: `${p.overdueIssues} isu lewat target`, color: '#EF4444' });
+  if (p.deviasi <= -10) reasons.push({ label: `Deviasi ${p.deviasi.toFixed(0)}%`, color: '#F6A821' });
+  return reasons;
+}
+
+function ConstrainedTable({ rows }: { rows: ConstrainedProject[] }) {
+  const c = useColors();
+  if (!rows.length) return <div style={{ fontSize:12, color:c.textMuted, textAlign:'center', padding:'20px 0' }}>Tidak ada proyek terkendala berdasarkan kriteria saat ini</div>;
+  return (
+    <div style={{ overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12, minWidth:680 }}>
+        <thead>
+          <tr>
+            {['Proyek','UIP','Progress','COD (RUPTL → Estimasi)','Kendala'].map((h,i) => (
+              <th key={h} style={{
+                textAlign: i>=2 && i<=3 ? 'right' : 'left', fontSize:10, letterSpacing:'0.06em', textTransform:'uppercase',
+                color:c.textMuted, fontWeight:700, padding:'0 10px 8px', borderBottom:`1px solid ${c.border}`, whiteSpace:'nowrap',
+              }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(p => (
+            <tr key={p.id}>
+              <td style={{ padding:'8px 10px', color:c.textPrimary, fontWeight:600, borderBottom:`1px solid ${c.divider}`, maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</td>
+              <td style={{ padding:'8px 10px', color:c.textSec, borderBottom:`1px solid ${c.divider}`, whiteSpace:'nowrap' }}>{p.uip || '—'}</td>
+              <td style={{ padding:'8px 10px', textAlign:'right', color:c.textSec, fontFamily:'monospace', borderBottom:`1px solid ${c.divider}`, whiteSpace:'nowrap' }}>
+                {p.progressRealisasi.toFixed(0)}% <span style={{ color:c.textMuted }}>/ {p.progressPlan.toFixed(0)}%</span>
+              </td>
+              <td style={{ padding:'8px 10px', textAlign:'right', color:c.textSec, fontFamily:'monospace', borderBottom:`1px solid ${c.divider}`, whiteSpace:'nowrap' }}>
+                {p.codTargetYear ?? '—'} → {p.codEstimasiYear ?? '—'}
+              </td>
+              <td style={{ padding:'8px 10px', borderBottom:`1px solid ${c.divider}` }}>
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                  {reasonsFor(p).map((r,i) => (
+                    <span key={i} style={{
+                      fontSize:10, fontWeight:600, padding:'2px 7px', borderRadius:20, whiteSpace:'nowrap',
+                      color:r.color, background:`${r.color}1A`,
+                    }}>{r.label}</span>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Rekomendasi per kategori kendala ─────────────────────────────────────────
+function RecommendationCards({ s }: { s: Summary['constrainedSummary'] }) {
+  const c = useColors();
+  const items = [
+    {
+      n: s.isu_menumpuk, color: '#EF4444', title: 'Isu Menumpuk',
+      cond: '≥3 isu lewat target penyelesaian',
+      rec: 'Eskalasi ke UIP terkait untuk rapat percepatan penutupan isu (action item review), dan re-assign target solve date yang realistis per isu.',
+    },
+    {
+      n: s.cod_terlambat, color: '#F6A821', title: 'COD Mundur ≥2 Tahun',
+      cond: 'estimasi COD mundur ≥2 tahun dari target RUPTL',
+      rec: 'Verifikasi root cause (kontrak, ROW, perizinan) dan lakukan rebaseline sebelum mengajukan revisi RUPTL atau perubahan tanggal COD.',
+    },
+    {
+      n: s.deviasi_signifikan, color: '#F6A821', title: 'Deviasi Progres Signifikan',
+      cond: 'realisasi ≤ -10 poin dari rencana',
+      rec: 'Tinjau S-curve dan critical path untuk mengidentifikasi item kritis, lalu pertimbangkan schedule compression atau percepatan pengadaan material kritis.',
+    },
+    {
+      n: s.terminasi, color: '#EF4444', title: 'Terminasi',
+      cond: 'kontrak/proyek berstatus terminasi, belum COD',
+      rec: 'Pastikan proses closing kontrak (pembayaran akhir, dokumentasi serah terima) tuntas, dan evaluasi apakah kebutuhan tetap perlu direalisasikan ulang lewat skema baru.',
+    },
+  ].filter(i => i.n > 0);
+
+  if (!items.length) return null;
+
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginTop:14 }}>
+      {items.map((it, i) => (
+        <div key={i} style={{
+          background:c.bgInput, borderRadius:8, padding:'12px 14px',
+          borderTop:`1px solid ${c.border}`, borderRight:`1px solid ${c.border}`, borderBottom:`1px solid ${c.border}`,
+          borderLeft:`3px solid ${it.color}`,
+        }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+            <span style={{ fontSize:12.5, fontWeight:700, color:c.textPrimary }}>{it.title}</span>
+            <span style={{ fontSize:13, fontWeight:700, color:it.color, fontFamily:'monospace' }}>{nf(it.n)}</span>
+          </div>
+          <div style={{ fontSize:10.5, color:c.textMuted, marginBottom:6 }}>{it.cond}</div>
+          <div style={{ fontSize:12, color:c.textSec, lineHeight:1.5 }}>{it.rec}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const TYPE_LABELS: Record<string, string> = {
   GI: 'Gardu Induk', TRANS: 'Transmisi', KIT: 'Pembangkit', KOMBINASI: 'Kombinasi',
   KIT_EBT: 'KIT-EBT', KIT_NONEBT: 'KIT-NONEBT', FSRU: 'FSRU', KIT_RELOKASI: 'KIT (Relokasi)',
@@ -357,6 +469,7 @@ export default function AnalyticsPage() {
     total, byType, byState, byUip, byTrack, capacity, pressure,
     mwByProvince, kmByProvince, issueByCategory, amendmentByType,
     codPipeline, codSlippage, codWithTargetOnly, sourceFile,
+    constrainedProjects, constrainedSummary,
   } = summary;
 
   const currentYear = new Date().getFullYear();
@@ -436,6 +549,15 @@ export default function AnalyticsPage() {
             layak diverifikasi apakah ini eskalasi nyata atau isu lama yang belum di-<i>close</i>.
           </Note>
         )}
+      </ChartCard>
+
+      {/* ── Proyek terkendala & rekomendasi ── */}
+      <ChartCard
+        title="Proyek Terkendala"
+        subtitle={`${nf(constrainedSummary.total)} proyek belum selesai dengan indikasi kendala · 15 teratas berdasarkan skor keparahan`}
+      >
+        <ConstrainedTable rows={constrainedProjects} />
+        <RecommendationCards s={constrainedSummary} />
       </ChartCard>
 
       {/* ── Pressure row ── */}
